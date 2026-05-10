@@ -1,9 +1,5 @@
-import * as bootstrap from 'bootstrap';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
-// Make Bootstrap globally available
-window.bootstrap = bootstrap;
-
-// Import jQuery
 import jQuery from 'jquery';
 window.$ = window.jQuery = jQuery;
 
