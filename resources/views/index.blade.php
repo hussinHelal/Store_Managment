@@ -5,7 +5,7 @@
     <h1 class="text-2xl font-medium text-gray-800 dark:text-white mb-1">الرئيسية</h1>
     <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">نظرة عامة</p>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 rounded m-2" >
 
         @php
         $cards = [
@@ -27,7 +27,7 @@
 
         @foreach($cards as $card)
         @php $c = $colors[$card['color']]; @endphp
-        <div class="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow">
+        <div class="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow m-2 rounded " >
             
             <div class="w-10 h-10 {{ $c['bg'] }} rounded-lg flex items-center justify-center">
                 <i class="fa-solid {{ $card['icon'] }} {{ $c['icon'] }}"></i>

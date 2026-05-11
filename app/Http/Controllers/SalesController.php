@@ -12,7 +12,8 @@ class SalesController extends Controller
      */
     public function index()
     {
-        //
+        $sales = sales::all();
+        return view('sales.index', ['sales' => $sales]);
     }
 
     /**

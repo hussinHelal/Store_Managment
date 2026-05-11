@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -30,9 +31,7 @@ class AuthController extends Controller
 
         $user  = Auth::user();
 
-        return response()->json([
-            'user'  => $user,
-        ]);
+        return redirect()->route('home');
     }
     
     public function register(Request $request)
@@ -53,12 +52,7 @@ class AuthController extends Controller
     
         // $token = $user->createToken('shop-token')->plainTextToken;
     
-        return response()->json([
-            'user'        => $user,
-            // 'role'        => $user->getRoleNames()->first(),
-            // 'permissions' => $user->getAllPermissions()->pluck('name'),
-            'token'       => $token,
-        ], 201);
+        return redirect()->route('showLogin');
     }
     
     public function logout(Request $request)
@@ -66,7 +60,7 @@ class AuthController extends Controller
 
         Auth::logout();
 
-        return redirect()->route('login');
+        return redirect()->route('showLogin');
     }
 
     public function user(Request $request)

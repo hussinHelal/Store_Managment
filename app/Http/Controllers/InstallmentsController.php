@@ -12,7 +12,8 @@ class InstallmentsController extends Controller
      */
     public function index()
     {
-        //
+        $installments = installments::all();
+        return view('installments.index', ['installments' => $installments]);
     }
 
     /**

@@ -3,13 +3,13 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DebtController;
-use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DebtsController;
+use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\InstallmentController;
+use App\Http\Controllers\InstallmentsController;
 
 Route::get('/', function () { return view('index'); })->name('home');
 
@@ -21,11 +21,13 @@ Route::get('/user', [AuthController::class, 'user'])->name('user');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::get('/showRegister', [AuthController::class, 'showRegister'])->name('showRegister');
 
-Route::get('/profile/{user}', [ProfileController::class, 'show'])->name('profile');
-Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
-Route::resource('/debts', DebtController::class);
-Route::resource('/installments', InstallmentController::class);
-Route::resource('/customers', CustomerController::class);
-Route::resource('/sales', SalesController::class);
-Route::resource('/categories', CategoryController::class);
-Route::resource('/products', ProductController::class);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::resource('/installments', InstallmentsController::class);
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::resource('/debts', DebtsController::class);
+    Route::resource('/customers', CustomersController::class);
+    Route::resource('/sales', SalesController::class);
+    Route::resource('/categories', CategoryController::class);
+    Route::resource('/products', ProductsController::class);
+});

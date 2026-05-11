@@ -12,7 +12,8 @@ class DebtsController extends Controller
      */
     public function index()
     {
-        //
+        $debts = debts::all();
+        return view('debts.index', ['debts' => $debts]);
     }
 
     /**

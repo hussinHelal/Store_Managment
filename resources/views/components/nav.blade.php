@@ -10,7 +10,7 @@
     </button>
 
     <div class="collapse navbar-collapse" id="navbarNav">
-      <div class="navbar-nav ms-auto d-flex align-items-center gap-2">
+      <div class="navbar-nav me-auto d-flex align-items-center gap-2">
 
         <form class="d-flex" role="search">
             <input class="form-control" type="search" placeholder="بحث..."/>
@@ -20,12 +20,14 @@
         </form>
 
         @guest
-            <a class="btn btn-outline-primary btn-sm" href="{{ route('showLogin') }}">Login</a>
-            <a class="btn btn-primary btn-sm" href="{{ route('showRegister') }}">Sign Up</a>
+            <div class="d-flex gap-2 me-auto">
+                <a class="btn btn-outline-primary btn-sm" href="{{ route('showLogin') }}">Login</a>
+                <a class="btn btn-primary btn-sm" href="{{ route('showRegister') }}">Sign Up</a>
+            </div>
         @endguest
 
         @auth
-            <div class="dropdown">
+            <div class="dropdown d-flex gap-2 me-auto">
                 <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                     <i class="fas fa-user-circle me-1"></i> {{ Auth::user()->name }}
                 </a>
@@ -52,6 +54,7 @@
             <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">@csrf</form>
         @endauth
 
+      </div>
       </div>
     </div>
 

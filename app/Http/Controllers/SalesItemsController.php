@@ -12,7 +12,7 @@ class SalesItemsController extends Controller
      */
     public function index()
     {
-        //
+       //
     }
 
     /**
