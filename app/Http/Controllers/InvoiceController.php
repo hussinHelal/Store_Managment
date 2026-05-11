@@ -21,7 +21,7 @@ class InvoiceController extends Controller
      */
     public function create()
     {
-        //
+        return view('invoices.create');
     }
 
     /**
@@ -29,7 +29,16 @@ class InvoiceController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validate = $request->validate([
+            'invoice_number' => 'required',
+            'customer' => 'required',
+            'description' => 'required',
+            'invoice_date' => 'required',
+            'total_amount' => 'required',
+            'status' => 'required',
+        ]);
+        invoice::create($validate);
+        return redirect()->route('invoices.index');
     }
 
     /**
@@ -37,7 +46,7 @@ class InvoiceController extends Controller
      */
     public function show(invoice $invoice)
     {
-        //
+        return view('invoices.show', ['invoice' => $invoice]);
     }
 
     /**
@@ -45,7 +54,7 @@ class InvoiceController extends Controller
      */
     public function edit(invoice $invoice)
     {
-        //
+        return view('invoices.edit', ['invoice' => $invoice]);
     }
 
     /**
@@ -53,7 +62,16 @@ class InvoiceController extends Controller
      */
     public function update(Request $request, invoice $invoice)
     {
-        //
+        $validate = $request->validate([
+            'invoice_number' => 'required',
+            'customer' => 'required',
+            'description' => 'required',
+            'invoice_date' => 'required',
+            'total_amount' => 'required',
+            'status' => 'required',
+        ]);
+        $invoice->update($validate);
+        return redirect()->route('invoices.index');
     }
 
     /**
@@ -61,6 +79,7 @@ class InvoiceController extends Controller
      */
     public function destroy(invoice $invoice)
     {
-        //
+        $invoice->delete();
+        return redirect()->route('invoices.index');
     }
 }

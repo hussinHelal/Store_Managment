@@ -21,7 +21,7 @@ class ProductsController extends Controller
      */
     public function create()
     {
-        //
+        return view('products.create');
     }
 
     /**
@@ -29,7 +29,15 @@ class ProductsController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validate = $request->validate([
+            'name' => 'required',
+            'price' => 'required',
+            'quantity' => 'required',
+            'description' => 'required',
+            'stock' => 'required',
+        ]);
+        products::create($validate);
+        return redirect()->route('products.index');
     }
 
     /**
@@ -37,7 +45,7 @@ class ProductsController extends Controller
      */
     public function show(products $products)
     {
-        //
+        return view('products.show', ['products' => $products]);
     }
 
     /**
@@ -45,7 +53,7 @@ class ProductsController extends Controller
      */
     public function edit(products $products)
     {
-        //
+        return view('products.edit', ['products' => $products]);
     }
 
     /**
@@ -53,7 +61,15 @@ class ProductsController extends Controller
      */
     public function update(Request $request, products $products)
     {
-        //
+        $validate = $request->validate([
+            'name' => 'required',
+            'price' => 'required',
+            'quantity' => 'required',
+            'description' => 'required',
+            'stock' => 'required',
+        ]);
+        $products->update($validate);
+        return redirect()->route('products.index');
     }
 
     /**
@@ -61,6 +77,7 @@ class ProductsController extends Controller
      */
     public function destroy(products $products)
     {
-        //
+        $products->delete();
+        return redirect()->route('products.index');
     }
 }

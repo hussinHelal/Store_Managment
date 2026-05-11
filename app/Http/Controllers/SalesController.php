@@ -21,7 +21,7 @@ class SalesController extends Controller
      */
     public function create()
     {
-        //
+        return view('sales.create');
     }
 
     /**
@@ -29,7 +29,13 @@ class SalesController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validate = $request->validate([
+            'name' => 'required',
+            'quantity' => 'required',
+            'description' => 'required',
+        ]);
+        sales::create($validate);
+        return redirect()->route('sales.index');
     }
 
     /**
@@ -37,7 +43,7 @@ class SalesController extends Controller
      */
     public function show(sales $sales)
     {
-        //
+        return view('sales.show', ['sales' => $sales]); 
     }
 
     /**
@@ -45,7 +51,7 @@ class SalesController extends Controller
      */
     public function edit(sales $sales)
     {
-        //
+        return view('sales.edit', ['sales' => $sales]);
     }
 
     /**
@@ -53,7 +59,13 @@ class SalesController extends Controller
      */
     public function update(Request $request, sales $sales)
     {
-        //
+        $validate = $request->validate([
+            'name' => 'required',
+            'quantity' => 'required',
+            'description' => 'required',
+        ]);
+        $sales->update($validate);
+        return redirect()->route('sales.index');
     }
 
     /**
@@ -61,6 +73,7 @@ class SalesController extends Controller
      */
     public function destroy(sales $sales)
     {
-        //
+        $sales->delete();
+        return redirect()->route('sales.index');
     }
 }

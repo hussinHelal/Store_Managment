@@ -21,7 +21,7 @@ class InstallmentsController extends Controller
      */
     public function create()
     {
-        //
+        return view('installments.create');
     }
 
     /**
@@ -29,7 +29,18 @@ class InstallmentsController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validate = $request->validate([
+            'customer_id' => 'required',
+            'amount' => 'required|numeric',
+            'due_date' => 'required|date',
+            'payment_data' => 'nullable|string',
+            'next_payment_date' => 'nullable|date',
+            'payment_date' => 'nullable|date',
+        ]);
+
+        installments::create($validate);
+
+        return redirect()->route('installments.index');
     }
 
     /**
@@ -37,7 +48,7 @@ class InstallmentsController extends Controller
      */
     public function show(installments $installments)
     {
-        //
+        return view('installments.show', ['installments' => $installments]);
     }
 
     /**
@@ -45,7 +56,7 @@ class InstallmentsController extends Controller
      */
     public function edit(installments $installments)
     {
-        //
+        return view('installments.edit', ['installments' => $installments]);
     }
 
     /**
@@ -53,7 +64,18 @@ class InstallmentsController extends Controller
      */
     public function update(Request $request, installments $installments)
     {
-        //
+        $validate = $request->validate([
+            'customer_id' => 'required',
+            'amount' => 'required|numeric',
+            'due_date' => 'required|date',
+            'payment_data' => 'nullable|string',
+            'next_payment_date' => 'nullable|date',
+            'payment_date' => 'nullable|date',
+        ]);
+
+        $installments->update($validate);
+
+        return redirect()->route('installments.index');
     }
 
     /**
@@ -61,6 +83,8 @@ class InstallmentsController extends Controller
      */
     public function destroy(installments $installments)
     {
-        //
+        $installments->delete();
+
+        return redirect()->route('installments.index');
     }
 }

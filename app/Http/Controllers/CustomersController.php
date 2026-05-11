@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\customers;
 use Illuminate\Http\Request;
+use function Clue\StreamFilter\register;
 
 class CustomersController extends Controller
 {
@@ -21,7 +22,7 @@ class CustomersController extends Controller
      */
     public function create()
     {
-        //
+        return view('customers.create');
     }
 
     /**
@@ -29,7 +30,14 @@ class CustomersController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
+            'phone' => 'required|string|max:20',
+        ]);
+
+        $customers = customers::create($validated);
+        return redirect()->route('customers.index');
     }
 
     /**
@@ -37,7 +45,7 @@ class CustomersController extends Controller
      */
     public function show(customers $customers)
     {
-        //
+        return view('customers.show', ['customers' => $customers]);
     }
 
     /**
@@ -45,7 +53,7 @@ class CustomersController extends Controller
      */
     public function edit(customers $customers)
     {
-        //
+        return view('customers.edit', ['customers' => $customers]);
     }
 
     /**
@@ -53,7 +61,14 @@ class CustomersController extends Controller
      */
     public function update(Request $request, customers $customers)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
+            'phone' => 'required|string|max:20',
+        ]);
+
+        $customers->update($validated);
+        return redirect()->route('customers.index');
     }
 
     /**
@@ -61,6 +76,7 @@ class CustomersController extends Controller
      */
     public function destroy(customers $customers)
     {
-        //
+        $customers->delete();
+        return redirect()->route('customers.index');
     }
 }

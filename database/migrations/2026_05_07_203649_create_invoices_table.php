@@ -14,7 +14,10 @@ return new class extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
             $table->string('invoice_number');
+            $table->text('description');
+            $table->string('customer');
             $table->date('invoice_date');
+            $table->string('status');
             $table->decimal('total_amount', 10, 2);
             
             $table->timestamps();
