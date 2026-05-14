@@ -3,8 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\category;
-use Illuminate\Http\Request;
-use function Clue\StreamFilter\register;
+use Illuminate\Http\Request;    
 
 class CategoryController extends Controller
 {
@@ -32,11 +31,10 @@ class CategoryController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:255',
         ]);
 
         $category = category::create($validated);
-        return redirect()->route('category.index')->with('success', 'Category created successfully.');
+        return redirect()->route('categories.index');
     }
 
     /**
@@ -62,19 +60,19 @@ class CategoryController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:255',
         ]);
 
         $category->update($validated);
-        return redirect()->route('category.index')->with('success', 'Category updated successfully.');
+        return redirect()->route('categories.index')->with('success', 'Category updated successfully.');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(category $category)
+    public function destroy($id)
     {
+        $category = category::findOrFail($id);
         $category->delete();
-        return redirect()->route('category.index')->with('success', 'Category deleted successfully.');
+        return redirect()->route('categories.index')->with('success', 'Category deleted successfully.');
     }
 }

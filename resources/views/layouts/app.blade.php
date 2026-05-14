@@ -6,7 +6,6 @@
             @include('components.nav')
         </header>
 
-        {{-- sidebar on the right (RTL), main on the left --}}
         <div class="d-flex">
             @include('components.sidebar')
             <main class="flex-grow-1 p-4">

@@ -13,11 +13,13 @@ return new class extends Migration
     {
         Schema::create('installments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('sale_id')->constrained();
+            $table->string('customer')->default('مجهول');
             $table->integer('amount');
-            $table->integer('due_date');
+            $table->date('due_date');
+            $table->date('payment_date')->nullable();
+            $table->date('next_payment_date')->nullable();
             $table->integer('paid_amount')->default(0);
-            $table->integer('paid_at');
+            $table->date('paid_at')->nullable();
             $table->string('status')->default('pending');
             $table->timestamps();
         });

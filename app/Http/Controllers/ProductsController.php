@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\products;
 use Illuminate\Http\Request;
+use App\Models\products;
+use App\Models\category;
 
 class ProductsController extends Controller
 {
@@ -12,8 +13,10 @@ class ProductsController extends Controller
      */
     public function index()
     {
-        $products = products::all();
-        return view('products.index', ['products' => $products]);
+        // $products = products::all();
+        $products = products::with('category')->get();
+        $categories = category::all();
+        return view('products.index', compact('products', 'categories'));
     }
 
     /**
@@ -21,7 +24,8 @@ class ProductsController extends Controller
      */
     public function create()
     {
-        return view('products.create');
+        $categories = category::all();
+        return view('products.create', ['categories' => $categories]);
     }
 
     /**
@@ -30,12 +34,13 @@ class ProductsController extends Controller
     public function store(Request $request)
     {
         $validate = $request->validate([
-            'name' => 'required',
-            'price' => 'required',
-            'quantity' => 'required',
-            'description' => 'required',
-            'stock' => 'required',
+            'name' => 'required | string',
+            'price' => 'required | numeric',
+            'description' => 'required | string',
+            'stock' => 'required | numeric',
+            'category_id' => 'required | numeric',
         ]);
+        
         products::create($validate);
         return redirect()->route('products.index');
     }
@@ -64,7 +69,6 @@ class ProductsController extends Controller
         $validate = $request->validate([
             'name' => 'required',
             'price' => 'required',
-            'quantity' => 'required',
             'description' => 'required',
             'stock' => 'required',
         ]);
@@ -75,8 +79,9 @@ class ProductsController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(products $products)
+    public function destroy($id)
     {
+        $products = products::findOrFail($id);
         $products->delete();
         return redirect()->route('products.index');
     }

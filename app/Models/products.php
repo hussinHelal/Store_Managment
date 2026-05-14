@@ -3,8 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\category;
 
 class products extends Model
 {
-    protected $fillable = ['name', 'price', 'quantity','description','stock'];
+    protected $fillable = ['name', 'price', 'quantity','description','stock','category_id'];
+    
+    public function category()
+    {
+        return $this->belongsTo(category::class, 'category_id');
+    }
+    
 }

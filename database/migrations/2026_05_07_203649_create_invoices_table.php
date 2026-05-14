@@ -19,6 +19,7 @@ return new class extends Migration
             $table->date('invoice_date');
             $table->string('status');
             $table->decimal('total_amount', 10, 2);
+            $table->decimal('paid_amount', 10, 2);
             
             $table->timestamps();
         });

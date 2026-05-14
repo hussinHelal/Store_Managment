@@ -2,14 +2,16 @@
 
 @section('content')
 
-    <button class="btn btn-primary"><a href="{{ route('category.create') }}" class="text-white"><i class="fas fa-plus"></i> صنف جديد</a></button>
-    <table class="table table-borderless">
+    <button class="btn btn-primary"><a href="{{ route('categories.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i> صنف جديد</a></button> <br>
+    <div class="row justify-content-center">
+        <span class="text-center text-bold">الاصناف</span>
+    </div>
+    <table class="table table-borderless table-hover table-striped table-primary">
       <thead>
-          <tr colspan="4">الاصناف</tr>
+          {{-- <td colspan="5">الاصناف</td> --}}
         <tr>
           <th scope="col">#</th>
           <th scope="col">الاسم</th>
-          <th scope="col">الوصف</th>
           <th scope="col">الإجراءات</th>
         </tr>
       </thead>
@@ -18,10 +20,9 @@
         <tr>
           <th scope="row">{{ $category->id }}</th>
           <td>{{ $category->name }}</td>
-          <td>{{ $category->description }}</td>
           <td>
-              <a href="{{ route('category.edit', $category->id) }}" class="btn btn-sm btn-primary">تعديل</a>
-              <form action="{{ route('category.destroy', $category->id) }}" method="POST" style="display: inline;">
+              <a href="{{ route('categories.edit', $category->id) }}" class="btn btn-sm btn-primary">تعديل</a>
+              <form action="{{ route('categories.destroy', $category->id) }}" method="POST" style="display: inline;">
                   @csrf
                   @method('DELETE')
                   <button type="submit" class="btn btn-sm btn-danger">حذف</button>

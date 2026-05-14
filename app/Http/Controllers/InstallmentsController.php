@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\installments;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class InstallmentsController extends Controller
 {
@@ -30,15 +32,22 @@ class InstallmentsController extends Controller
     public function store(Request $request)
     {
         $validate = $request->validate([
-            'customer_id' => 'required',
+            'customer' => 'required|string',
             'amount' => 'required|numeric',
             'due_date' => 'required|date',
-            'payment_data' => 'nullable|string',
-            'next_payment_date' => 'nullable|date',
             'payment_date' => 'nullable|date',
+            'next_payment_date' => 'nullable|date',
+            'paid_amount' => 'nullable|numeric',
         ]);
 
-        installments::create($validate);
+        installments::create([
+            'customer' => $validate['customer'],
+            'amount' => $validate['amount'],
+            'due_date' => Carbon::parse($validate['due_date'])->format('Y-m-d'),
+            'payment_date' => $validate['payment_date'] ? Carbon::parse($validate['payment_date'])->format('Y-m-d') : null,
+            'next_payment_date' => $validate['next_payment_date'] ? Carbon::parse($validate['next_payment_date'])->format('Y-m-d') : null,
+            'paid_amount' => $validate['paid_amount'],
+        ]);
 
         return redirect()->route('installments.index');
     }
@@ -81,10 +90,12 @@ class InstallmentsController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(installments $installments)
+    public function destroy($id)
     {
-        $installments->delete();
-
+        Log::info('Deleting installment: ' . $id);
+        $installment = installments::findOrFail($id);
+        $installment->delete();
+        
         return redirect()->route('installments.index');
     }
 }
