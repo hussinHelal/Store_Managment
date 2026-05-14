@@ -5,17 +5,17 @@
     <div class="row justify-content-center">
         <div class="col-md-6">
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header bg-success text-white">
                     <h5 class="mb-0">
                         <i class="bi bi-person-gear me-2"></i> إعدادات الملف الشخصي
                     </h5>
                 </div>
                 <div class="card-body text-center py-4">
-                    <div class="avatar-circle bg-primary text-white mx-auto mb-3">
+                    <div class="avatar-circle bg-success text-white mx-auto mb-3">
                         {{ strtoupper(substr($user->name, 0, 1)) }}
                     </div>
-                    <h5 class="mb-1">{{ $user->name }}</h5>
-                    <p class="text-muted mb-0">{{ $user->email }}</p>
+                    <h5 class="mb-1">{{ $user->name ?? 'لا يوجد اسم' }}</h5>
+                    <p class="text-muted mb-0">{{ $user->email ?? 'لا يوجد بريد' }}</p>
                 </div>
                 <div class="card-footer d-flex justify-content-end gap-2">
                     <a href="{{ route('user.edit', $user->id) }}" class="btn btn-sm btn-outline-primary">

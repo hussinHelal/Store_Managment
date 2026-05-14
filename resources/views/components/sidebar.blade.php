@@ -1,4 +1,4 @@
-<aside style="width: 250px; min-height: calc(100vh - 56px);" class="bg-light border-start shadow-sm p-3 flex-shrink-0">
+<aside style="width: 250px; min-height: calc(100vh - 56px);" class="bg-light border-start  p-3 flex-shrink-0">
     <nav class="nav flex-column gap-1">
         <a href="{{ route('home') }}"
            class="nav-link rounded d-flex align-items-center gap-2 {{ request()->routeIs('home') ? 'active bg-primary text-white' : 'text-dark' }}">

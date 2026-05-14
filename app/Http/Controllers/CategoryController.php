@@ -42,7 +42,7 @@ class CategoryController extends Controller
      */
     public function show(category $category)
     {
-        return view('category.show', ['category' => $category]);
+        //
     }
 
     /**
@@ -63,7 +63,7 @@ class CategoryController extends Controller
         ]);
 
         $category->update($validated);
-        return redirect()->route('categories.index')->with('success', 'Category updated successfully.');
+        return redirect()->route('categories.index');
     }
 
     /**

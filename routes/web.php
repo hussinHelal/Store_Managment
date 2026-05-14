@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ProfileController;
@@ -21,7 +22,6 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::get('/showRegister', [AuthController::class, 'showRegister'])->name('showRegister');
 
 Route::middleware(['auth:sanctum'])->group(function () {
-    Route::get('/user', [AuthController::class, 'user'])->name('user');
     Route::resource('/installments', InstallmentsController::class);
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
@@ -30,4 +30,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::resource('/sales', SalesController::class);
     Route::resource('/categories', CategoryController::class);
     Route::resource('/products', ProductsController::class);
+    Route::resource('/user', User::class);
 });
+
+    // Route::get('/user', [AuthController::class, 'user'])->name('user');

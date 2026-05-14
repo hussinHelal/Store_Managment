@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg bg-body-tertiary">
+<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
   <div class="container-fluid">
 
     <a class="navbar-brand mx-1" href="{{ route('home') }}">
@@ -12,12 +12,6 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <div class="navbar-nav me-auto d-flex align-items-center gap-2">
 
-        <form class="d-flex" role="search">
-            <input class="form-control" type="search" placeholder="بحث..."/>
-            <button class="btn btn-outline-secondary me-2" type="submit">
-                <i class="fa-solid fa-search"></i>
-            </button>
-        </form>
 
         @guest
             <div class="d-flex gap-2 me-auto">
@@ -53,6 +47,13 @@
             </div>
             <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">@csrf</form>
         @endauth
+        
+        <form class="d-flex" role="search">
+            <input class="form-control" type="search" placeholder="بحث..."/>
+            <button class="btn btn-outline-secondary me-2" type="submit">
+                <i class="fa-solid fa-search"></i>
+            </button>
+        </form>
 
       </div>
       </div>
