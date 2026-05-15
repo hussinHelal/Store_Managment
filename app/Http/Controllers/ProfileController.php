@@ -14,8 +14,8 @@ class ProfileController extends Controller
     public function index()
     {
         // $profiles = profile::all();
-        $user = User::findOrFail(auth()->user()->id);
-        return view('profile.index', compact('user'));
+        $profile = User::findOrFail(auth()->user()->id);
+        return view('profile.index', compact('profile'));
     }
 
     /**
@@ -54,13 +54,14 @@ class ProfileController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, profile $profile, User $user)
+    public function update(Request $request, profile $profile)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
+        $user = User::findOrFail(auth()->user()->id);
         if(isDirty($validated)) {
             $user->update($validated);
             $profile->update($validated);

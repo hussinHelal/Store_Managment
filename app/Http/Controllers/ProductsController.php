@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\products;
 use App\Models\category;
+use Illuminate\Support\Facades\Log;
 
 class ProductsController extends Controller
 {
@@ -38,10 +39,12 @@ class ProductsController extends Controller
             'price' => 'required | numeric',
             'description' => 'required | string',
             'stock' => 'required | numeric',
-            'category_id' => 'required | numeric',
+            'category_id' => 'required|exists:categories,id',
         ]);
         
         products::create($validate);
+        
+
         return redirect()->route('products.index');
     }
 
@@ -50,29 +53,32 @@ class ProductsController extends Controller
      */
     public function show(products $products)
     {
-        return view('products.show', ['products' => $products]);
+        //return view('products.show', ['products' => $products]);
+        return redirect()->route('products.index');
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(products $products)
+    public function edit(products $product)
     {
-        return view('products.edit', ['products' => $products]);
+        $categories = category::all();
+        return view('products.edit', ['product' => $product, 'categories' => $categories,'id' => $product->id]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, products $products)
+    public function update(Request $request, products $products,int $id)
     {
         $validate = $request->validate([
-            'name' => 'required',
-            'price' => 'required',
-            'description' => 'required',
-            'stock' => 'required',
+            'name' => 'required | string ',
+            'price' => 'required | numeric',
+            'description' => 'required | string',
+            'stock' => 'required | numeric',
+            'category_id' => 'required|exists:categories,id',
         ]);
-        $products->update($validate);
+        products::where('id', $id)->update($validate);
         return redirect()->route('products.index');
     }
 

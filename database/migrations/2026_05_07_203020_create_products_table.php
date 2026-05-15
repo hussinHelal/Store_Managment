@@ -17,6 +17,7 @@ return new class extends Migration
             $table->decimal('price', 8, 2);
             $table->string('description');
             $table->integer('stock');
+            $table->unsignedInteger('total_sold')->default(0);
             $table->timestamps();
         });
     }

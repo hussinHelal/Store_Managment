@@ -13,4 +13,9 @@ class installments extends Model
            'payment_date'      => 'date',
            'next_payment_date' => 'date',
     ];
+
+    public function customer()
+    {
+        return $this->belongsTo(customers::class, 'customer_id');
+    }
 }

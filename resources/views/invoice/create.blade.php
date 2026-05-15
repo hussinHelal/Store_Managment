@@ -5,15 +5,28 @@
     <span class="text-center border border-1 rounded text-bold">انشاء فاتورة</span>
     <form action="{{ route('invoices.store') }}" method="POST">
       @csrf
-      
+      @if ($errors->any())
+          <div class="alert alert-danger">
+              <ul class="mb-0" style="list-style-type: none; padding: 0;">
+                  @foreach ($errors->all() as $error)
+                      <li>{{ $error }}</li>
+                  @endforeach
+              </ul>
+          </div>
+      @endif
       <div class="mb-3">
         <label for="customer" class="form-label">العميل</label>
         <input type="text" class="form-control" id="customer" name="customer">
       </div>
       
       <div class="mb-3">
-        <label for="description" class="form-label">الوصف</label>
-        <input type="text" class="form-control" id="description" name="description">
+        <label for="product_id" class="form-label">المنتج</label>
+        <select class="form-select" dir='ltr' id="product_id" name="product_id">
+          <option value="">اختر المنتج</option>
+          @foreach($products as $product)
+            <option value="{{ $product->id }}">{{ $product->name }}</option>
+          @endforeach
+        </select>
       </div>
 
       <div class="mb-3">
@@ -21,6 +34,10 @@
         <input type="date" class="form-control" id="invoice_date" name="invoice_date">
       </div>
       
+      <div class="mb-3">
+        <label for="quantity" class="form-label">الكمية</label>
+        <input type="number" class="form-control" id="quantity" name="quantity">
+      </div>
       <div class="mb-3">
         <label for="paid_amount" class="form-label">المبلغ المدفوع</label>
         <input type="number" class="form-control" id="paid_amount" name="paid_amount">

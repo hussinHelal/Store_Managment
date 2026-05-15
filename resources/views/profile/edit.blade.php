@@ -3,7 +3,7 @@
 @section('content')
 
     <span class="text-center border border-1 rounded text-bold">تحديث فاتورة</span>
-    <form action="{{ route('users.update', $user->id) }}" method="POST">
+    <form action="{{ route('profile.update', $user->id) }}" method="POST">
       @csrf
       @method('PUT')
       @if ($errors->any())

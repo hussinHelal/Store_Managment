@@ -5,6 +5,7 @@
     <span class="text-center border border-1 rounded text-bold">تحديث منتج</span>
     <form action="{{ route('products.update', $product->id) }}" method="POST">
       @csrf
+      @method('PUT')
       @if ($errors->any())
           <div class="alert alert-danger">
               <ul class="mb-0" style="list-style-type: none; padding: 0;">

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\invoice;
+use App\Models\products;
 use App\Models\sales;
 use Illuminate\Http\Request;
 
@@ -12,8 +14,8 @@ class SalesController extends Controller
      */
     public function index()
     {
-        $sales = sales::all();
-        return view('sales.index', ['sales' => $sales]);
+        $products = products::where('total_sold', '>', 0)->get();
+        return view('sales.index', ['products' => $products]);
     }
 
     /**
@@ -43,7 +45,8 @@ class SalesController extends Controller
      */
     public function show(sales $sales)
     {
-        return view('sales.show', ['sales' => $sales]); 
+        $products = products::all();
+        return view('sales.show', ['sales' => $sales, 'products' => $products]); 
     }
 
     /**

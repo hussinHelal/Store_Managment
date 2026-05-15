@@ -16,13 +16,13 @@
         </tr>
       </thead>
       <tbody>
-          @foreach($sales as $sale)
+          @foreach($products as $product)
         <tr>
-          <th scope="row">{{ $sale->id }}</th>
-          <td>{{ $sale->name }}</td>
-          <td>{{ $sale->quantity }}</td>
+          <th scope="row">{{ $product->id }}</th>
+          <td>{{ $product->name }}</td>
+          <td>{{ $product->total_sold }}</td>
           <td>
-              <form action="{{ route('sale.destroy', $sale->id) }}" method="POST" style="display: inline;">
+              <form action="{{ route('sales.destroy', $product->id) }}" method="POST" style="display: inline;">
                   @csrf
                   @method('DELETE')
                   <button type="submit" class="btn btn-sm btn-danger">حذف</button>

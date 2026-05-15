@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('products', function (Blueprint $table) {
-            $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
-
+        Schema::table('invoices', function (Blueprint $table) {
+                    $table->decimal('product_price', 10, 2)->nullable()->change();
         });
     }
 
@@ -22,7 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('products', function (Blueprint $table) {
+        Schema::table('invoices', function (Blueprint $table) {
             //
         });
     }

@@ -15,8 +15,8 @@
 
         @guest
             <div class="d-flex gap-2 me-auto">
-                <a class="btn btn-outline-primary btn-sm" href="{{ route('showLogin') }}">Login</a>
-                <a class="btn btn-primary btn-sm" href="{{ route('showRegister') }}">Sign Up</a>
+                <a class="btn btn-outline-primary btn-sm" href="{{ route('showLogin') }}">تسجيل الدخول</a>
+                <a class="btn btn-primary btn-sm" href="{{ route('showRegister') }}">إنشاء حساب</a>
             </div>
         @endguest
 
@@ -27,7 +27,7 @@
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li>
-                        <a class="dropdown-item" href="{{ route('profile') }}">
+                        <a class="dropdown-item" href="{{ route('profile.index') }}">
                             <i class="fas fa-user me-2"></i> الملف الشخصي
                         </a>
                     </li>
