@@ -18,4 +18,11 @@ class profile extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    protected $table = 'users';
+
+    public function getRouteKeyName()
+    {
+        return 'id';
+    }
 }

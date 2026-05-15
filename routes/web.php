@@ -32,11 +32,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::resource('/categories', CategoryController::class);
     Route::resource('/products', ProductsController::class);
     Route::resource('/invoices', InvoiceController::class);
-    Route::resource('/profile', ProfileController::class)->names([
-        'index' => 'profile.index',
-        'edit' => 'profile.edit',
-        'update' => 'profile.update',
-    ]);
+    Route::resource('/profile', ProfileController::class);
 });
 
     // Route::get('/user', [AuthController::class, 'user'])->name('user');

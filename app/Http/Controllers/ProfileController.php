@@ -62,10 +62,17 @@ class ProfileController extends Controller
             'password' => 'nullable|string|min:8|confirmed',
         ]);
         $user = User::findOrFail(auth()->user()->id);
-        if(isDirty($validated)) {
-            $user->update($validated);
-            $profile->update($validated);
+        
+        if (!empty($validated['password'])) {
+        $validated['password'] = bcrypt($validated['password']);
+        } else {
+            unset($validated['password']);
         }
+        
+
+        $user->update($validated);
+            // $profile->update($validated);
+        
         return redirect()->route('profile.index');
     }
 
