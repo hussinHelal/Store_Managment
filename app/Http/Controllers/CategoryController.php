@@ -29,6 +29,9 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
+         if ($request->user()->cannot('create-category', Category::class)) {
+            abort(403);
+        }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
         ]);
@@ -58,6 +61,10 @@ class CategoryController extends Controller
      */
     public function update(Request $request, category $category)
     {
+        if ($request->user()->cannot('update-category', $category)) {
+            abort(403);
+        }
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
         ]);
@@ -69,8 +76,12 @@ class CategoryController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($request->user()->cannot('delete-category', Category::class)) {
+            abort(403);
+        }
+
         $category = category::findOrFail($id);
         $category->delete();
         return redirect()->route('categories.index')->with('success', 'Category deleted successfully.');

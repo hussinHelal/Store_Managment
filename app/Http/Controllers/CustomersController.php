@@ -30,6 +30,9 @@ class CustomersController extends Controller
      */
     public function store(Request $request)
     {
+         if ($request->user()->cannot('create-customers', Customers::class)) {
+            abort(403);
+        }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'required|string|max:255',
@@ -61,6 +64,9 @@ class CustomersController extends Controller
      */
     public function update(Request $request, customers $customers)
     {
+        if ($request->user()->cannot('update-customers', $customers)) {
+            abort(403);
+        }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
@@ -74,8 +80,11 @@ class CustomersController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(customers $customers)
+    public function destroy(Request $request, customers $customers)
     {
+        if ($request->user()->cannot('delete-customers', $customers)) {
+            abort(403);
+        }
         $customers->delete();
         return redirect()->route('customers.index');
     }

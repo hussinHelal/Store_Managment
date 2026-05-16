@@ -12,24 +12,20 @@
           <th scope="col">#</th>
           <th scope="col">اسم المنتج</th>
           <th scope="col">الكمية المباعة</th>
-          <th scope="col">الإجراءات</th>
         </tr>
       </thead>
       <tbody>
-          @foreach($products as $product)
+          @forelse($soldProducts as $product)
         <tr>
-          <th scope="row">{{ $product->id }}</th>
+          <th scope="row">{{ $loop->iteration }}</th>
           <td>{{ $product->name }}</td>
-          <td>{{ $product->total_sold }}</td>
-          <td>
-              <form action="{{ route('sales.destroy', $product->id) }}" method="POST" style="display: inline;">
-                  @csrf
-                  @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-danger">حذف</button>
-              </form>
-          </td>
+          <td>{{ $product->sold_quantity }}</td>
         </tr>
-        @endforeach
+        @empty
+        <tr>
+          <td colspan="3" class="text-center">لا توجد منتجات مباعة حتى الآن.</td>
+        </tr>
+        @endforelse
       </tbody>
     </table>
     

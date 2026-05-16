@@ -71,6 +71,9 @@ class ProductsController extends Controller
      */
     public function update(Request $request, products $products,int $id)
     {
+         if ($request->user()->cannot('update-products', $products)) {
+            abort(403);
+        }
         $validate = $request->validate([
             'name' => 'required | string ',
             'price' => 'required | numeric',
@@ -85,8 +88,12 @@ class ProductsController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($request->user()->cannot('delete-products', Products::class)) {
+            abort(403);
+        }
+         $products = products::findOrFail($id);
         $products = products::findOrFail($id);
         $products->delete();
         return redirect()->route('products.index');

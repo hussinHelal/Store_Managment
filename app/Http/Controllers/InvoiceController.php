@@ -32,6 +32,10 @@ class InvoiceController extends Controller
      */
     public function store(Request $request)
     {
+        if ($request->user()->cannot('create-invoice', Invoice::class)) {
+            abort(403);
+        }
+
         $validate = $request->validate([
             'customer' => 'required | string',
             'product_id' => 'required | exists:products,id',
@@ -88,6 +92,9 @@ class InvoiceController extends Controller
      */
     public function update(Request $request, invoice $invoice)
     {
+        if ($request->user()->cannot('update-invoice', $invoice)) {
+            abort(403);
+        }
         $validate = $request->validate([
             'customer' => 'required | string',
             'product_id' => 'required | exists:products,id',
@@ -127,7 +134,33 @@ class InvoiceController extends Controller
      */
     public function destroy(invoice $invoice)
     {
+        if (request()->user()->cannot('delete-invoice', Invoice::class)) {
+            abort(403);
+        }
         invoice::findOrFail($invoice->id)->delete();
         return redirect()->route('invoices.index');
+    }
+
+    public function refund(invoice $invoice)
+    {
+        if (request()->user()->cannot('refund-invoice', $invoice)) {
+            abort(403);
+        }
+
+        if ($invoice->status === 'refunded') {
+            return redirect()->back()->with('error', 'This invoice has already been refunded.');
+        }
+
+        $product = products::findOrFail($invoice->product_id);
+        $product->update([
+            'stock' => $product->stock + $invoice->quantity,
+            'total_sold' => max(0, $product->total_sold - $invoice->quantity),
+        ]);
+
+        $invoice->update([
+            'status' => 'refunded',
+        ]);
+
+        return redirect()->route('invoices.index')->with('success', 'Invoice refunded successfully.');
     }
 }

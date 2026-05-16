@@ -6,7 +6,7 @@
     <p class="text-muted small mb-4">نظرة عامة</p>
 
     <div class="row g-3">
-        @php
+        {{-- @php
         $cards = [
             ['label' => 'إجمالي المبيعات', 'value' => '245,890', 'badge' => '+12.5% هذا الشهر', 'icon' => 'fa-money-bill-wave', 'trend' => 'up', 'color' => '#10b981'],
             ['label' => 'التصنيفات',        'value' => '48',        'badge' => 'تصنيف نشط',        'icon' => 'fa-list',            'trend' => null,  'color' => '#8b5cf6'],
@@ -15,7 +15,7 @@
             ['label' => 'فواتير اليوم',     'value' => '37',        'badge' => 'فاتورة اليوم',     'icon' => 'fa-receipt',         'trend' => null,  'color' => '#f59e0b'],
             ['label' => 'المنتجات',     'value' => '100',        'badge' => '100 منتج',     'icon' => 'fa-receipt',         'trend' => null,  'color' => '#3b82f6'],
         ];
-        @endphp
+        @endphp --}}
 
         @foreach($cards as $card)
         <div class="col-12 col-md-6 col-xl-4 col-xxl-3">

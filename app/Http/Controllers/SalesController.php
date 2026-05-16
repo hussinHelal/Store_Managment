@@ -14,8 +14,14 @@ class SalesController extends Controller
      */
     public function index()
     {
-        $products = products::where('total_sold', '>', 0)->get();
-        return view('sales.index', ['products' => $products]);
+        $soldProducts = products::select('products.id', 'products.name')
+            ->join('invoices', 'products.id', '=', 'invoices.product_id')
+            ->where('invoices.status', '!=', 'refunded')
+            ->selectRaw('SUM(invoices.quantity) as sold_quantity')
+            ->groupBy('products.id', 'products.name')
+            ->get();
+
+        return view('sales.index', ['soldProducts' => $soldProducts]);
     }
 
     /**
@@ -31,6 +37,7 @@ class SalesController extends Controller
      */
     public function store(Request $request)
     {
+        
         $validate = $request->validate([
             'name' => 'required',
             'quantity' => 'required',

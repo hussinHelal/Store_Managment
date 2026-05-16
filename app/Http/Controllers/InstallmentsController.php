@@ -31,6 +31,9 @@ class InstallmentsController extends Controller
      */
     public function store(Request $request)
     {
+         if ($request->user()->cannot('create-installments', Installments::class)) {
+            abort(403);
+        }
         $validate = $request->validate([
             'customer' => 'required|string',
             'amount' => 'required|numeric',
@@ -73,6 +76,10 @@ class InstallmentsController extends Controller
      */
     public function update(Request $request, installments $installments)
     {
+        if ($request->user()->cannot('update-installments', $installments)) {
+            abort(403);
+        }
+         
         $validate = $request->validate([
             'customer_id' => 'required',
             'amount' => 'required|numeric',
@@ -92,6 +99,9 @@ class InstallmentsController extends Controller
      */
     public function destroy($id)
     {
+        if (request()->user()->cannot('delete-installments', Installments::class)) {
+            abort(403);
+        }
         Log::info('Deleting installment: ' . $id);
         $installment = installments::findOrFail($id);
         $installment->delete();

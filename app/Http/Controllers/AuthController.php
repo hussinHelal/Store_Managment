@@ -26,7 +26,7 @@ class AuthController extends Controller
         ]);
 
         if (!Auth::attempt($credentials)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+            return redirect()->back()->withErrors(['email' => 'بيانات الدخول غير صحيحة'])->withInput();
         }
 
         $user  = Auth::user();
@@ -39,20 +39,18 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed', 
+            'password' => 'required|string|min:8|confirmed',
+            'role'     => 'nullable|in:cashier,admin,superadmin',
         ]);
     
         $user = User::create([
             'name'     => $validated['name'],
             'email'    => $validated['email'],
             'password' => bcrypt($validated['password']),
+            'role'     => $validated['role'] ?? 'cashier',
         ]);
     
-        // $user->assignRole('cashier'); 
-    
-        // $token = $user->createToken('shop-token')->plainTextToken;
-    
-        return redirect()->route('showLogin');
+        return redirect()->route('showLogin')->with('success', 'Registration successful. Please login.');
     }
     
     public function logout(Request $request)

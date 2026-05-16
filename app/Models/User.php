@@ -25,6 +25,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
         'password_confirmation'
     ];
 
@@ -50,4 +51,27 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isSuperAdmin()
+    {
+        return $this->role === 'superadmin';
+    }
+
+    public function isCashier()
+    {
+        return $this->role === 'cashier';
+    }
+
+    public function hasRole($role)
+    {
+        return $this->role === $role;
+    }
+    // public function isCashier()
+    // {
+    //     return $this->role === 'cashier';
+    // }
 }

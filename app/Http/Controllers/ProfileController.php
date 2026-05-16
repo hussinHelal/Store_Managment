@@ -56,6 +56,10 @@ class ProfileController extends Controller
      */
     public function update(Request $request, profile $profile)
     {
+        if ($request->user()->cannot('update-profile', $profile)) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
@@ -79,8 +83,11 @@ class ProfileController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(profile $profile,$id)
+    public function destroy(Request $request, profile $profile,$id)
     {
+        if ($request->user()->cannot('delete-profile', $profile)) {
+            abort(403);
+        }
         $user = User::findOrFail($id);
         $user->delete();
         $profile->delete();

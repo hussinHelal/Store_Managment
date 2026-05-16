@@ -40,6 +40,12 @@
           <td>{{ $invoice->status }}</td>
           <td>
               <a href="{{ route('invoices.edit', $invoice->id) }}" class="btn btn-sm btn-primary">تعديل</a>
+              @if($invoice->status !== 'refunded')
+              <form action="{{ route('invoices.refund', $invoice->id) }}" method="POST" style="display: inline;">
+                  @csrf
+                  <button type="submit" class="btn btn-sm btn-warning">استرداد</button>
+              </form>
+              @endif
               <form action="{{ route('invoices.destroy', $invoice->id) }}" method="POST" style="display: inline;">
                   @csrf
                   @method('DELETE')
