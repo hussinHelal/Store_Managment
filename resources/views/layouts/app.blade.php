@@ -16,5 +16,6 @@
         </div>
 
         @include('components.foot')
+        @stack('scripts')
     </body>
 </html>

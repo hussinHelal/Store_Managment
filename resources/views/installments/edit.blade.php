@@ -20,33 +20,98 @@
         <label for="customer" class="form-label">الاسم</label>
         <input type="text" class="form-control" id="customer" name="customer" value="{{ $installment->customer }}" readonly>
       </div>
-      
       <div class="mb-3">
-        <label for="amount" class="form-label">المبلغ</label>
-        <input type="number" class="form-control" id="amount" name="amount" value="{{ $installment->amount }}">
+        <label for="product_name" class="form-label">المنتج</label>
+        <select class="form-select" dir='ltr' id="product_name" name="product_name">
+          <option value="">اختر المنتج</option>
+          @foreach($product as $prod)
+            <option value="{{ $prod->id }}">{{ $prod->name }}</option>
+          @endforeach
+        </select> 
       </div>
       
       <div class="mb-3">
-        <label for="due_date" class="form-label">تاريخ الانشاء</label>
-        <input type="date" class="form-control" id="due_date" name="due_date" value="{{ $installment->due_date }}">
+        <label for="product_price" class="form-label">سعر المنتج</label>
+        <input type="number" class="form-control" id="product_price" name="product_price" value="{{ $installment->product_price }}">
+      </div>
+      
+      <div class="mb-3">
+        <label for="quantity" class="form-label">الكمية</label>
+        <input type="number" class="form-control" id="quantity" name="quantity" value="{{ $installment->quantity }}">
       </div>
 
       <div class="mb-3">
         <label for="payment_date" class="form-label">تاريخ الدفع</label>
         <input type="date" class="form-control" id="payment_date" name="payment_date" value="{{ $installment->payment_date }}">
       </div>
+      
       <div class="mb-3">
         <label for="paid_amount" class="form-label">المدفوع</label>
         <input type="number" class="form-control" id="paid_amount" name="paid_amount" value="{{ $installment->paid_amount }}">
       </div>
-
+      
       <div class="mb-3">
         <label for="next_payment_date" class="form-label">تاريخ الدفع التالي</label>
         <input type="date" class="form-control" id="next_payment_date" name="next_payment_date" value="{{ $installment->next_payment_date }}">
       </div>
 
+      <div class="mb-3">
+        <label for="remaining" class="form-label">المتبقي</label>
+        <input type="number" class="form-control" id="remaining" name="remaining" value="{{ $installment->remaining }}">
+      </div>
+      
       <button type="submit" class="btn btn-primary">تحديث</button>
     </form>
     
+    @push('scripts')
+    <script>
+    
+      document.getElementById('product_name').addEventListener('change', function () {
+      const prices = @json($product->pluck('price', 'id'));
+      const productId = this.value;
+      const price = prices[productId] ?? '';
+        document.getElementById('product_price').value = price;
+      });
+      document.getElementById('paid_amount').addEventListener('change', function () {
+      const remaining = document.getElementById('product_price').value * (document.getElementById('quantity').value ?? 1) - document.getElementById('paid_amount').value;
+        
+        document.getElementById('remaining').value = remaining;
+      });
+
+      // 1. Grab the date elements
+      const paymentDateInput = document.getElementById('payment_date');
+      const nextPaymentDateInput = document.getElementById('next_payment_date');
+      
+      // 2. Prevent selecting past dates by setting the 'min' attribute to Today
+      const today = new Date().toISOString().split('T')[0];
+      paymentDateInput.min = today;
+      
+      // 3. Automatically calculate +1 month when payment_date changes
+      paymentDateInput.addEventListener('change', function () {
+        if (!this.value) {
+          nextPaymentDateInput.value = '';
+          return;
+        }
+      
+        // Create a date object from the selected payment date
+        const selectedDate = new Date(this.value);
+      
+        // Add 1 month
+        selectedDate.setMonth(selectedDate.getMonth() + 1);
+      
+        // Format back to YYYY-MM-DD
+        const year = selectedDate.getFullYear();
+        // Months are 0-indexed in JS, so we add 1, and pad with a leading zero if needed
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+      
+        const nextMonthDate = `${year}-${month}-${day}`;
+      
+        // Set the value of the next payment date input
+        nextPaymentDateInput.value = nextMonthDate;
+      });
+      
+    </script>
+    @endpush
     
 @endsection

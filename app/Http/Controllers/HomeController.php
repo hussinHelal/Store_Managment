@@ -6,7 +6,7 @@ use App\Models\invoice;
 use App\Models\products;
 use App\Models\category;
 use App\Models\customers;
-use App\Models\debts;
+use App\Models\installments;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
@@ -16,7 +16,7 @@ class HomeController extends Controller
         $totalSales = invoice::where('status', '!=', 'refunded')->sum('total_amount');
         $categoriesCount = category::count();
         $customersCount = customers::count();
-        $totalDebt = debts::sum('remaining');
+        $totalInstallments = Installments::sum('amount');
         $todayInvoices = invoice::where('status', '!=', 'refunded')
             ->whereDate('invoice_date', now())
             ->count();
@@ -49,7 +49,7 @@ class HomeController extends Controller
             ],
             [
                 'label' => 'إجمالي الديون',
-                'value' => number_format($totalDebt, 2),
+                'value' => number_format($totalInstallments, 2),
                 'badge' => 'رصيد الدين المتبقي',
                 'icon' => 'fa-credit-card',
                 'trend' => 'down',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\installments;
+use App\Models\products;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -14,16 +15,20 @@ class InstallmentsController extends Controller
      */
     public function index()
     {
-        $installments = installments::all();
-        return view('installments.index', ['installments' => $installments]);
+        // $installments = installments::all();
+        // $products = products::all();
+        $installments = Installments::with('product')->get(); 
+        $products = products::all();
+        return view('installments.index', ['installments' => $installments, 'products' => $products]);
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(products $products)
     {
-        return view('installments.create');
+        $product = $products::all();
+        return view('installments.create', ['product' => $product]);
     }
 
     /**
@@ -36,22 +41,27 @@ class InstallmentsController extends Controller
         }
         $validate = $request->validate([
             'customer' => 'required|string',
-            'amount' => 'required|numeric',
-            'due_date' => 'required|date',
+            'product_name' => 'required|string',
+            'product_price' => 'required|numeric',
             'payment_date' => 'nullable|date',
             'next_payment_date' => 'nullable|date',
             'paid_amount' => 'nullable|numeric',
+            'quantity' => 'nullable|numeric',
         ]);
-
+       
         installments::create([
             'customer' => $validate['customer'],
-            'amount' => $validate['amount'],
-            'due_date' => Carbon::parse($validate['due_date'])->format('Y-m-d'),
+            'product_name' => $validate['product_name'],
+            'product_price' => $validate['product_price'],
+            'quantity' => $validate['quantity'],
             'payment_date' => $validate['payment_date'] ? Carbon::parse($validate['payment_date'])->format('Y-m-d') : null,
             'next_payment_date' => $validate['next_payment_date'] ? Carbon::parse($validate['next_payment_date'])->format('Y-m-d') : null,
             'paid_amount' => $validate['paid_amount'],
+            'remaining' => $validate['product_price'] * ($validate['quantity'] ?? 1) - $validate['paid_amount'],
         ]);
 
+        Log::info('Installment created');
+        
         return redirect()->route('installments.index');
     }
 
@@ -60,15 +70,16 @@ class InstallmentsController extends Controller
      */
     public function show(installments $installments)
     {
-        return view('installments.show', ['installments' => $installments]);
+        //return view('installments.show', ['installments' => $installments]);
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(installments $installments)
+    public function edit(installments $installment, products $products)
     {
-        return view('installments.edit', ['installments' => $installments]);
+        $product = $products::all();
+        return view('installments.edit', ['installment' => $installment, 'product' => $product]);
     }
 
     /**
@@ -79,17 +90,20 @@ class InstallmentsController extends Controller
         if ($request->user()->cannot('update-installments', $installments)) {
             abort(403);
         }
-         
+            
         $validate = $request->validate([
-            'customer_id' => 'required',
-            'amount' => 'required|numeric',
-            'due_date' => 'required|date',
-            'payment_data' => 'nullable|string',
-            'next_payment_date' => 'nullable|date',
+            'customer' => 'required',
+            'product_name' => 'required|string',
+            'product_price' => 'required|numeric',
             'payment_date' => 'nullable|date',
+            'next_payment_date' => 'nullable|date',
+            'paid_amount' => 'nullable|numeric',
+            'quantity' => 'nullable|numeric',
         ]);
-
-        $installments->update($validate);
+    
+        $remaining = $validate['product_price'] * ($validate['quantity'] ?? 1) - $request->input('paid_amount', 0);
+    
+        $installments->update(array_merge($validate, ['remaining' => $remaining]));
 
         return redirect()->route('installments.index');
     }
@@ -108,4 +122,19 @@ class InstallmentsController extends Controller
         
         return redirect()->route('installments.index');
     }
+
+    public function pay(Request $request, installments $installments)
+    {
+        $validate = $request->validate([
+            'paid_amount' => 'required|numeric',
+        ]);
+
+        $installments->update([
+            'paid_amount' => $installments->paid_amount + $validate['paid_amount'],
+            'remaining' => $installments->remaining - $validate['paid_amount'],
+        ]);
+
+        return redirect()->route('installments.index');
+    }
+
 }

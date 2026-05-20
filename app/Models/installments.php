@@ -6,16 +6,20 @@ use Illuminate\Database\Eloquent\Model;
 
 class installments extends Model
 {
-    protected $fillable = ['customer', 'amount', 'due_date','payment_data','next_payment_date','payment_date','paid_amount',"paid_at"];
+    protected $fillable = ['customer', 'product_id', 'product_price', 'product_name', 'next_payment_date', 'payment_date', 'paid_amount', 'remaining', 'quantity'];
 
     protected $casts = [
-           'due_date'          => 'date',
            'payment_date'      => 'date',
            'next_payment_date' => 'date',
     ];
 
-    public function customer()
+    // public function customer()
+    // {
+    //     return $this->hasOne(customers::class, 'id');
+    // }
+    
+    public function product()
     {
-        return $this->belongsTo(customers::class, 'customer_id');
+        return $this->belongsTo(products::class, 'product_id', 'id');
     }
 }
