@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="rtl">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="rtl" data-bs-theme="light">
     @include('components.head')
     <body>
         <header>
@@ -16,6 +16,8 @@
         </div>
 
         @include('components.foot')
+        
         @stack('scripts')
+        
     </body>
 </html>

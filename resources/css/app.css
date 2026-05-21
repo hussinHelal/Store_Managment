@@ -1,2 +1,39 @@
 @import "bootstrap/dist/css/bootstrap.min.css";
 @import "@fortawesome/fontawesome-free/css/all.min.css";
+
+:root {
+    color-scheme: light;
+    --aside-bg: #f8f9fa;
+    --aside-text: #212529;
+    --card-bg: #ffffff;
+    --card-text: #212529;
+}
+
+body {
+    min-height: 100vh;
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+aside {
+    background-color: var(--aside-bg);
+    color: var(--aside-text);
+}
+
+.theme-label {
+    white-space: nowrap;
+}
+
+/* Dark theme */
+[data-bs-theme="dark"] {
+    --aside-bg: #1b1f24;
+    --aside-text: #ffffff;
+    --card-bg: #2b3035;
+    --card-text: #ffffff;
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: var(--card-bg);
+    color: var(--card-text);
+    border-color: #495057;
+}

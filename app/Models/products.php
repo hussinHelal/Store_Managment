@@ -18,4 +18,10 @@ class products extends Model
     {
         return $this->hasMany(sales::class, 'product_id');
     }
+    
+    public function installments()
+    {
+        return $this->hasMany(installments::class, 'product_id');
+    }
+    
 }

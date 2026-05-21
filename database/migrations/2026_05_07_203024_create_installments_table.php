@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('installments', function (Blueprint $table) {
             $table->id();
             $table->string('customer')->default('مجهول');
+            $table->foreignId('product_id')->nullable()->constrained('products')->after('customer');
             $table->string('product_name');
             $table->integer('product_price');
             $table->date('payment_date')->nullable();

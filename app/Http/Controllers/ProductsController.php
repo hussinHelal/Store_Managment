@@ -93,7 +93,7 @@ class ProductsController extends Controller
         if ($request->user()->cannot('delete-products', Products::class)) {
             abort(403);
         }
-         $products = products::findOrFail($id);
+        $products = products::findOrFail($id);
         $products = products::findOrFail($id);
         $products->delete();
         return redirect()->route('products.index');

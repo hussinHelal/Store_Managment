@@ -18,13 +18,14 @@
         <label for="customer" class="form-label">العميل</label>
         <input type="text" class="form-control" id="customer" name="customer">
       </div>
-      
+
+      {{-- <input type="hidden" id="product_id" name="product_id"> --}}
       <div class="mb-3">
         <label for="product_id" class="form-label">المنتج</label>
         <select class="form-select" dir='ltr' id="product_id" name="product_id">
           <option value="">اختر المنتج</option>
           @foreach($products as $product)
-            <option value="{{ $product->id }}">{{ $product->name }}</option>
+            <option value="{{ $product->id }}" data-price="{{ $product->price }}">{{ $product->name }}</option>
           @endforeach
         </select>
       </div>
@@ -38,6 +39,7 @@
         <label for="quantity" class="form-label">الكمية</label>
         <input type="number" class="form-control" id="quantity" name="quantity">
       </div>
+      
       <div class="mb-3">
         <label for="paid_amount" class="form-label">المبلغ المدفوع</label>
         <input type="number" class="form-control" id="paid_amount" name="paid_amount">
@@ -52,5 +54,24 @@
       <button type="submit" class="btn btn-primary">انشاء</button>
     </form>
     
-    
+    @push('scripts')
+        <script>
+        const productSelect = document.getElementById('product_id');
+        const quantityInput = document.getElementById('quantity');
+        const totalInput = document.getElementById('total_amount');
+        
+        function calculateTotal() {
+            let price = parseFloat(
+                productSelect.options[productSelect.selectedIndex].dataset.price || 0
+            );
+        
+            let quantity = parseInt(quantityInput.value || 0);
+        
+            totalInput.value = price * quantity;
+        }
+        
+        productSelect.addEventListener('change', calculateTotal);
+        quantityInput.addEventListener('input', calculateTotal);
+        </script>
+    @endpush
 @endsection

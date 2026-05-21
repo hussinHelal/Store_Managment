@@ -5,11 +5,11 @@
 
     <button class="btn btn-primary"><a href="{{ route('invoices.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i> فاتورة جديدة</a></button>
      <div class="row justify-content-center">
-        <span class="text-center text-bold">الفواتير</span>
+        <span class="fw-bold text-body text-center">الفواتير</span>
     </div>
-    <table class="table table-borderless table-hover table-striped table-primary">
+    <table class="table  table-hover table-striped ">
+          <thead class="table-dark">
       <tr>
-          <thead>
             <th scope="col">#</th>
             <th scope="col">رقم الفاتورة</th>
             <th scope="col">العميل</th>
@@ -30,9 +30,9 @@
           <th scope="row">{{ $invoice->id }}</th>
           <td>{{ $invoice->invoice_number }}</td>
           <td>{{ $invoice->customer }}</td>
-          <td>{{ $invoice->products?->name }}</td>
+          <td>{{ $invoice->product?->name }}</td>
           <td>{{ $invoice->quantity }}</td>
-          <td>{{ $invoice->products?->price }}</td>
+          <td>{{ $invoice->product?->price }}</td>
           <td>{{ $invoice->total_amount }}</td>
           <td>{{ $invoice->paid_amount }}</td>
           <td>{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') }}</td>
@@ -43,13 +43,13 @@
               @if($invoice->status !== 'refunded')
               <form action="{{ route('invoices.refund', $invoice->id) }}" method="POST" style="display: inline;">
                   @csrf
-                  <button type="submit" class="btn btn-sm btn-warning">استرداد</button>
+                  <button type="submit" class="btn btn-sm btn-warning m-1 ">استرداد</button>
               </form>
               @endif
               <form action="{{ route('invoices.destroy', $invoice->id) }}" method="POST" style="display: inline;">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-danger">حذف</button>
+                  <button type="submit" class="btn btn-sm btn-danger m-1 ">حذف</button>
               </form>
           </td>
         </tr>

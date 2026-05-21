@@ -16,7 +16,7 @@ class HomeController extends Controller
         $totalSales = invoice::where('status', '!=', 'refunded')->sum('total_amount');
         $categoriesCount = category::count();
         $customersCount = customers::count();
-        $totalInstallments = Installments::sum('amount');
+        $totalInstallments = Installments::sum('paid_amount');
         $todayInvoices = invoice::where('status', '!=', 'refunded')
             ->whereDate('invoice_date', now())
             ->count();

@@ -22,12 +22,11 @@
 
       <div class="mb-3">
         <label for="product_name" class="form-label">المنتج</label>
-        <select class="form-select" dir='ltr' id="product_name" name="product_name">
-          <option value="">اختر المنتج</option>
-          @foreach($product as $prod)
-            <option value="{{ $prod->id }}">{{ $prod->name }}</option>
-          @endforeach
-        </select> 
+        <select name="product_id" class="form-control" required>
+            @foreach($product as $p)
+                <option value="{{ $p->id }}">{{ $p->name }} - {{ $p->price }} ج.م</option>
+            @endforeach
+        </select>
       </div>
       
       <div class="mb-3">
@@ -58,7 +57,7 @@
 
       <div class="mb-3">
         <label for="remaining" class="form-label">المتبقي</label>
-        <input type="number" class="form-control" id="remaining" name="remaining" readonly>
+        <input type="number" class="form-control" id="remaining" name="remaining" >
       </div>
       
       <button type="submit" class="btn btn-primary">انشاء</button>
@@ -117,6 +116,3 @@
     @endpush
     
 @endsection
-
-{{-- 'remaining' => $validate['product_price'] * ($validate['quantity'] ?? 1) - $validate['paid_amount'], --}}
- 

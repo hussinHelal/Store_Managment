@@ -20,16 +20,16 @@ class invoice extends Model
     {
         return $this->hasMany(payments::class)->count();
     }
-    public function products()
+    public function product()
     {
         return $this->belongsTo(products::class, 'product_id');
     }
     public function products_count()
     {
-        return $this->belongsToMany(products::class, 'product_id')->count();
+        return $this->product()->count();
     }
-    public function calculate_total_amount()
-    {
-        return $this->belongsToMany(products::class, 'product_id')->sum('product_price * quantity');
-    }
+    // public function calculate_total_amount()
+    // {
+    //     return $this->product()->sum('product_price * quantity');
+    // }
 }

@@ -5,10 +5,10 @@
 <button class="btn btn-primary"><a href="{{ route('customers.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i> عميل جديد</a></button>
 
 <div class="row justify-content-center">
-    <span class="text-center text-bold">العملاء</span>
+    <span class="fw-bold text-body text-center">العملاء</span>
 </div>
-<table class="table table-borderless table-hover table-striped table-primary">
-      <thead>
+<table class="table  table-hover table-striped ">
+      <thead class="table-dark">
           <tr>
             <th scope="col">#</th>
             <th scope="col">الاسم</th>

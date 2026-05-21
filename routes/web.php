@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DebtsController;
+// use App\Http\Controllers\DebtsController;
 use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\CategoryController;
@@ -20,11 +20,12 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/login', [AuthController::class, 'login'])->name('login');
 Route::get('/showLogin', [AuthController::class, 'showLogin'])->name('showLogin');
 Route::post('/login', [AuthController::class, 'login']);
-Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::get('/showRegister', [AuthController::class, 'showRegister'])->name('showRegister');
 
 Route::middleware(['auth:sanctum'])->group(function () {
+    
     Route::resource('/users', UserController::class);
 
     Route::resource('/installments', InstallmentsController::class)->except(['store', 'update', 'destroy']);

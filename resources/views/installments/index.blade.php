@@ -5,11 +5,11 @@
     <button class="btn btn-primary"><a href="{{ route('installments.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i> دين جديد</a></button>
 
     <div class="row justify-content-center">
-        <span class="text-center text-bold">العملاء</span>
+        <span class="fw-bold text-body text-center">الديون</span>
     </div>
 
-    <table class="table table-borderless table-hover table-striped table-primary">
-      <thead>
+    <table class="table  table-hover table-striped ">
+      <thead class="table-dark">
         <tr>
           <th scope="col">#</th>
           <th scope="col">الاسم</th>
@@ -28,14 +28,14 @@
           @foreach($installments as $installment)
         <tr>
           <th scope="row">{{ $installment->id }}</th>
-          <td>{{ $installment->customer }}</td>
+          <td>{{ $installment->customer }}</td> 
           <td>{{ $installment->product?->name ?? 'لا يوجد اسم' }}</td>
           <td>{{ $installment->product?->price ?? 'لا يوجد سعر' }}</td>
           <td>{{ $installment->quantity ?? 'لا يوجد كمية' }}</td>
           <td>{{ \Carbon\Carbon::parse($installment->payment_date)->format('Y-m-d') }}</td>
           <td>{{ \Carbon\Carbon::parse($installment->next_payment_date)->format('Y-m-d') }}</td>
           <td>{{ $installment->paid_amount }}</td>
-          <td>{{ $installment->remaining }}</td>
+          <td>{{ $installment->remaining }}</td> 
           <td>{{ $installment->status }}</td>
           <td>
               <a href="{{ route('installments.edit', $installment->id) }}" class="btn btn-sm btn-primary m-1 rounded">تعديل</a>

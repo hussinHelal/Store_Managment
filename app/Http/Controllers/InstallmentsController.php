@@ -15,8 +15,6 @@ class InstallmentsController extends Controller
      */
     public function index()
     {
-        // $installments = installments::all();
-        // $products = products::all();
         $installments = Installments::with('product')->get(); 
         $products = products::all();
         return view('installments.index', ['installments' => $installments, 'products' => $products]);
@@ -34,37 +32,46 @@ class InstallmentsController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
+     public function store(Request $request)
+     {
          if ($request->user()->cannot('create-installments', Installments::class)) {
-            abort(403);
-        }
-        $validate = $request->validate([
-            'customer' => 'required|string',
-            'product_name' => 'required|string',
-            'product_price' => 'required|numeric',
-            'payment_date' => 'nullable|date',
-            'next_payment_date' => 'nullable|date',
-            'paid_amount' => 'nullable|numeric',
-            'quantity' => 'nullable|numeric',
-        ]);
-       
-        installments::create([
-            'customer' => $validate['customer'],
-            'product_name' => $validate['product_name'],
-            'product_price' => $validate['product_price'],
-            'quantity' => $validate['quantity'],
-            'payment_date' => $validate['payment_date'] ? Carbon::parse($validate['payment_date'])->format('Y-m-d') : null,
-            'next_payment_date' => $validate['next_payment_date'] ? Carbon::parse($validate['next_payment_date'])->format('Y-m-d') : null,
-            'paid_amount' => $validate['paid_amount'],
-            'remaining' => $validate['product_price'] * ($validate['quantity'] ?? 1) - $validate['paid_amount'],
-        ]);
-
-        Log::info('Installment created');
-        
-        return redirect()->route('installments.index');
-    }
-
+             return redirect()->route('installments.index')
+                 ->with('error', 'You do not have permission to create installments.');
+         }
+     
+         $validate = $request->validate([
+             'customer'          => 'required|string|max:255',
+             'product_id'        => 'required|exists:products,id',
+             'payment_date'      => 'nullable|date',
+             'next_payment_date' => 'nullable|date',
+             'paid_amount'       => 'nullable|numeric|min:0',
+             'quantity'          => 'nullable|integer|min:1',
+         ]);
+     
+         $product = Products::findOrFail($validate['product_id']);
+     
+         $quantity     = $validate['quantity'] ?? 1;
+         $totalAmount  = $product->price * $quantity;
+         $paidAmount   = $validate['paid_amount'] ?? 0;
+     
+         $status = ($paidAmount >= $totalAmount) ? 'مكتمل' : 'غير مكتمل';
+     
+         Installments::create([
+             'customer'          => $validate['customer'],
+             'product_id'        => $product->id,
+             'product_name'      => $product->name,
+             'product_price'     => $product->price,
+             'quantity'          => $quantity,
+             'payment_date'      => $validate['payment_date'] ? Carbon::parse($validate['payment_date'])->format('Y-m-d') : null,
+             'next_payment_date' => $validate['next_payment_date'] ? Carbon::parse($validate['next_payment_date'])->format('Y-m-d') : null,
+             'paid_amount'       => $paidAmount,
+             'remaining'         => $totalAmount - $paidAmount,
+             'status'            => $status,          
+         ]);
+     
+         return redirect()->route('installments.index')
+             ->with('success', 'تم إضافة الدين بنجاح');
+     }
     /**
      * Display the specified resource.
      */
@@ -85,28 +92,46 @@ class InstallmentsController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, installments $installments)
-    {
-        if ($request->user()->cannot('update-installments', $installments)) {
-            abort(403);
-        }
-            
-        $validate = $request->validate([
-            'customer' => 'required',
-            'product_name' => 'required|string',
-            'product_price' => 'required|numeric',
-            'payment_date' => 'nullable|date',
-            'next_payment_date' => 'nullable|date',
-            'paid_amount' => 'nullable|numeric',
-            'quantity' => 'nullable|numeric',
-        ]);
-    
-        $remaining = $validate['product_price'] * ($validate['quantity'] ?? 1) - $request->input('paid_amount', 0);
-    
-        $installments->update(array_merge($validate, ['remaining' => $remaining]));
-
-        return redirect()->route('installments.index');
-    }
+     public function update(Request $request, Installments $installment)
+     {
+         if ($request->user()->cannot('update-installments', $installment)) {
+             return redirect()->route('installments.index')
+                 ->with('error', 'You do not have permission to update installments.');
+         }
+     
+         $validate = $request->validate([
+             'customer'          => 'required|string|max:255',
+             'product_id'        => 'required|exists:products,id',
+             'payment_date'      => 'nullable|date',
+             'next_payment_date' => 'nullable|date',
+             'paid_amount'       => 'nullable|numeric|min:0',
+             'quantity'          => 'nullable|integer|min:1',
+         ]);
+     
+         $product = Products::findOrFail($validate['product_id']);
+     
+         $quantity     = $validate['quantity'] ?? 1;
+         $totalAmount  = $product->price * $quantity;
+         $paidAmount   = $validate['paid_amount'] ?? 0;
+     
+         $status = ($paidAmount >= $totalAmount) ? 'مكتمل' : 'غير مكتمل';
+     
+         $installment->update([
+             'customer'          => $validate['customer'],
+             'product_id'        => $product->id,
+             'product_name'      => $product->name,
+             'product_price'     => $product->price,
+             'quantity'          => $quantity,
+             'payment_date'      => $validate['payment_date'] ? Carbon::parse($validate['payment_date'])->format('Y-m-d') : null,
+             'next_payment_date' => $validate['next_payment_date'] ? Carbon::parse($validate['next_payment_date'])->format('Y-m-d') : null,
+             'paid_amount'       => $paidAmount,
+             'remaining'         => $totalAmount - $paidAmount,
+             'status'            => $status,               
+         ]);
+     
+         return redirect()->route('installments.index')
+             ->with('success', 'تم تحديث الدين بنجاح');
+     }
 
     /**
      * Remove the specified resource from storage.

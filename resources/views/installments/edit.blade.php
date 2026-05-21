@@ -15,19 +15,18 @@
               </ul>
           </div>
       @endif
-      
+
       <div class="mb-3">
         <label for="customer" class="form-label">الاسم</label>
-        <input type="text" class="form-control" id="customer" name="customer" value="{{ $installment->customer }}" readonly>
+        <input type="text" class="form-control" id="customer" name="customer" value="{{ $installment->customer }}" >
       </div>
       <div class="mb-3">
         <label for="product_name" class="form-label">المنتج</label>
-        <select class="form-select" dir='ltr' id="product_name" name="product_name">
-          <option value="">اختر المنتج</option>
-          @foreach($product as $prod)
-            <option value="{{ $prod->id }}">{{ $prod->name }}</option>
-          @endforeach
-        </select> 
+        <select name="product_id" class="form-control" required>
+            @foreach($product as $p)
+                <option value="{{ $p->id }}">{{ $p->name }} - {{ $p->price }} ج.م</option>
+            @endforeach
+        </select>
       </div>
       
       <div class="mb-3">

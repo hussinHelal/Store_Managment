@@ -4,11 +4,11 @@
 
     <button class="btn btn-primary"><a href="{{ route('categories.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i> صنف جديد</a></button> <br>
     <div class="row justify-content-center">
-        <span class="text-center text-bold">الاصناف</span>
+        <h3 class="fw-bold text-body text-center">الأصناف</h3>
     </div>
-    <table class="table table-borderless table-hover table-striped table-primary">
-      <thead>
-          {{-- <td colspan="5">الاصناف</td> --}}
+    <table class="table table-hover table-striped ">
+      <thead class="table-dark">
+          
         <tr>
           <th scope="col">#</th>
           <th scope="col">الاسم</th>

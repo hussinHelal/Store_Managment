@@ -2,7 +2,7 @@
 
 @section('main')
 <div class="container-fluid py-4">
-    <h1 class="h3 fw-bold text-dark mb-1">الرئيسية</h1>
+    <h1 class="h3 fw-bold text-body mb-1">الرئيسية</h1>
     <p class="text-muted small mb-4">نظرة عامة</p>
 
     <div class="row g-3">
@@ -18,16 +18,16 @@
         @endphp --}}
 
         @foreach($cards as $card)
-        <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
-            <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden" style="border-top: 4px solid {{ $card['color'] }} !important;">
+        <div class="col-12 col-md-6 col-xl-4 col-xxl-3 ">
+            <div class="card h-100 border-0 shadow-sm position-relative overflow-hidden " style="border-top: 4px solid {{ $card['color'] }} !important;">
                 <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3 ">
                         <div class="rounded-circle d-flex align-items-center justify-content-center" 
                              style="width: 40px; height: 40px; background-color: {{ $card['color'] }}20;">
                             <i class="fa-solid {{ $card['icon'] }}" style="color: {{ $card['color'] }}"></i>
                         </div>
                         
-                        <span class="badge rounded-pill fw-medium py-2 px-2" 
+                        <span class="badge rounded-pill fw-medium py-2 px-2 " 
                               style="background-color: {{ $card['color'] }}15; color: {{ $card['color'] }}; font-size: 0.7rem;">
                             @if($card['trend'] === 'up')
                                 <i class="fa-solid fa-arrow-trend-up me-1"></i>
@@ -42,7 +42,7 @@
 
                     <div>
                         <p class="text-muted small mb-1">{{ $card['label'] }}</p>
-                        <h3 class="fw-bold mb-0" style="color: #334155;">{{ $card['value'] }}</h3>
+                        <h3 class="fw-bold mb-0 text-body">{{ $card['value'] }}</h3>
                     </div>
                 </div>
             </div>
@@ -61,4 +61,5 @@
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
     }
 </style>
+
 @endsection

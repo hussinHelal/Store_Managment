@@ -16,17 +16,28 @@
           </div>
       @endif
       <input type="hidden" name="invoice_id" value="{{ $invoice->id }}">
-      
+      <input type="hidden" id="product_id" name="product_id">
+
       <div class="mb-3">
         <label for="customer" class="form-label">العميل</label>
         <input type="text" class="form-control" id="customer" name="customer" value="{{ $invoice->customer }}">
       </div>
       
       <div class="mb-3">
-        <label for="description" class="form-label">الوصف</label>
-        <input type="text" class="form-control" id="description" name="description" value="{{ $invoice->description }}">
+        <label for="product_id" class="form-label">المنتج</label>
+        <select class="form-select" dir='ltr' id="product_id" name="product_id">
+          <option value="">اختر المنتج</option>
+          @foreach($products as $product)
+            <option value="{{ $product->id }}" {{ $product->id == $invoice->product_id ? 'selected' : '' }}>{{ $product->name }}</option>
+          @endforeach
+        </select>
       </div>
 
+      <div class="mb-3">
+        <label for="quantity" class="form-label">الكمية</label>
+        <input type="number" class="form-control" id="quantity" name="quantity" value="{{ $invoice->quantity }}">
+      </div>
+      
       <div class="mb-3">
         <label for="invoice_date" class="form-label">التاريخ</label>
         <input type="date" class="form-control" id="invoice_date" name="invoice_date" value="{{ $invoice->invoice_date }}">
@@ -43,7 +54,7 @@
       </div>
 
 
-      <button type="submit" class="btn btn-primary">انشاء</button>
+      <button type="submit" class="btn btn-primary">تحديث</button>
     </form>
     
     
