@@ -93,7 +93,12 @@ class MaintenanceController extends Controller
         return redirect()->route('maintenance.index');
     }
 
-    public function repair(Maintenance $maintenance)
+    public function showRepaired(Maintenance $maintenance)
+    {
+        return view('Maintenance.repaired', compact('maintenance'));
+    }
+
+    public function repaired(Maintenance $maintenance)
     {
         $maintenance->update([
             'status' => 'مكتمل',

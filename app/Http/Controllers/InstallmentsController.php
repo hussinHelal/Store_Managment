@@ -148,17 +148,31 @@ class InstallmentsController extends Controller
         return redirect()->route('installments.index');
     }
 
-    public function pay(Request $request, installments $installments)
+    public function showPay($id)
     {
-        $validate = $request->validate([
-            'paid_amount' => 'required|numeric',
+        $installment = installments::findOrFail($id);
+        return view('installments.pay', compact('installment'));
+    }
+
+    public function pay(Request $request, installments $installment)
+    {
+        $validated = $request->validate([
+            'paid_amount' => 'required|numeric|min:1',
         ]);
 
-        $installments->update([
-            'paid_amount' => $installments->paid_amount + $validate['paid_amount'],
-            'remaining' => $installments->remaining - $validate['paid_amount'],
+        $newPaidAmount  = $installment->paid_amount + $validated['paid_amount'];
+        $newRemaining   = $installment->remaining   - $validated['paid_amount'];
+        $newStatus      = $newRemaining <= 0 ? 'مكتمل' : 'غير مكتمل';
+        $newNextPayment = $newStatus === 'مكتمل' ? null : Carbon::now()->addMonth();
+    
+        $installment->update([
+            'paid_amount'      => $newPaidAmount,
+            'remaining'        => $newRemaining,
+            'status'           => $newStatus,
+            'paid_at'          => Carbon::now(),
+            'next_payment_date'=> $newNextPayment,
         ]);
-
+    
         return redirect()->route('installments.index');
     }
 

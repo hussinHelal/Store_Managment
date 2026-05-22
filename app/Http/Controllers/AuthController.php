@@ -47,7 +47,7 @@ class AuthController extends Controller
             'name'     => $validated['name'],
             'email'    => $validated['email'],
             'password' => bcrypt($validated['password']),
-            'role'     => $validated['role'] ?? 'cashier',
+            'role'     => $validated['role'] ?? 'admin',
         ]);
     
         return redirect()->route('showLogin')->with('success', 'Registration successful. Please login.');

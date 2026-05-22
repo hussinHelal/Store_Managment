@@ -39,6 +39,7 @@
           <td>{{ $installment->status }}</td>
           <td>
               <a href="{{ route('installments.edit', $installment->id) }}" class="btn btn-sm btn-primary m-1 rounded">تعديل</a>
+              <a href="{{ route('installments.showPay', $installment->id) }}" class="btn btn-sm btn-warning m-1 rounded">دفع</a>
               <form action="{{ route('installments.destroy', $installment->id) }}" method="POST" style="display: inline;">
                   @csrf
                   @method('DELETE')

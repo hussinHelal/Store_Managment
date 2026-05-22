@@ -11,17 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('maintenances', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('owner');
-            $table->string('status');
+        Schema::table('maintenances', function (Blueprint $table) {
             $table->string('address');
             $table->integer('phone')->nullable();
-            $table->text('description');
-            $table->date('requested_date');
-            $table->date('completed_date')->nullable();
-            $table->timestamps();
         });
     }
 
@@ -30,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('maintenances');
+        Schema::table('maintenances', function (Blueprint $table) {
+            $table->dropColumn(['address', 'phone']);
+        });
     }
 };

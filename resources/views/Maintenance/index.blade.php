@@ -2,7 +2,7 @@
 
 @section('content')
     
-<button class="btn btn-primary"><a href="{{ route('maintenance.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i> عميل جديد</a></button>
+<button class="btn btn-primary"><a href="{{ route('maintenance.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i>جهاز جديد</a></button>
 
 <div class="row justify-content-center">
     <span class="fw-bold text-body text-center">الصيانة</span>
@@ -32,15 +32,15 @@
           <td>{{ $maintenance->address }}</td>
           <td>{{ $maintenance->phone }}</td>
           <td>{{ $maintenance->status }}</td>
-          <td>{{ $maintenance->requested_date }}</td>
-          <td>{{ $maintenance->completed_date }}</td>
+          <td>{{\Carbon\Carbon::parse($maintenance->requested_date)->format('Y-m-d') }}</td>
+          <td>{{\Carbon\Carbon::parse($maintenance->completed_date)->format('Y-m-d') }}</td>
           <td>
               <a href="{{ route('maintenance.edit', $maintenance->id) }}" class="btn btn-sm btn-primary">تعديل</a>
-              <a href="{{ route('maintenance.repaired', $maintenance->id) }}" class="btn btn-sm btn-primary">تم اصلاحه</a>
+              <a href="{{ route('maintenance.showRepaired', $maintenance->id) }}" class="btn btn-sm btn-primary">تغيير الحالة</a>
               <form action="{{ route('maintenance.destroy', $maintenance->id) }}" method="POST" style="display: inline;">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('هل أنت متأكد من حذف هذا العميل ؟')">حذف</button>
+                  <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('هل أنت متأكد من حذف هذا الجهاز    ؟')">حذف</button>
               </form>
           </td>
         </tr>

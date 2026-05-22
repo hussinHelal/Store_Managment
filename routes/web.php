@@ -14,6 +14,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InstallmentsController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\MaintenanceController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
@@ -31,6 +32,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::resource('/installments', InstallmentsController::class)->except(['store', 'update', 'destroy']);
     Route::put('/installments/{installment}', [InstallmentsController::class, 'update'])->can('update-installments')
     ->name('installments.update');
+    Route::get('/installments/{id}/pay', [InstallmentsController::class, 'showPay'])->can('update-installments')
+    ->name('installments.showPay');
+    Route::put('/installments/{installment}/pay', [InstallmentsController::class, 'pay'])->can('update-installments')
+    ->name('installments.pay');
      Route::post('/installments', [InstallmentsController::class, 'store'])->can('create-installments')
     ->name('installments.store');
      Route::delete('/installments/{installment}', [InstallmentsController::class, 'destroy'])->can('delete-installments')
@@ -81,6 +86,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     ->name('profile.update');
         Route::delete('/profile', [ProfileController::class, 'destroy'])->can('delete-profile')
     ->name('profile.destroy');
+
+    Route::resource('/maintenance', MaintenanceController::class);
+    Route::get('/maintenance/{maintenance}/showRepaired', [MaintenanceController::class, 'showRepaired'])->name('maintenance.showRepaired');
+    Route::put('/maintenance/{maintenance}/repaired', [MaintenanceController::class, 'repaired'])->name('maintenance.repaired');
 });
 
     // Route::get('/user', [AuthController::class, 'user'])->name('user');

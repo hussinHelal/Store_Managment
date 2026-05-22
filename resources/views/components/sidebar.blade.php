@@ -18,6 +18,11 @@
             <i class="fa-solid fa-cart-arrow-down"></i>
             <span>المنتجات</span>
         </a>
+        <a href="{{ route('maintenance.index') }}"
+           class="nav-link rounded d-flex align-items-center gap-2 {{ request()->routeIs('maintenance.*') ? 'active bg-primary text-white' : 'text-body' }}">
+            <i class="fa-solid fa-wrench"></i>
+            <span>الصيانة</span>
+        </a>
 
         <a href="{{ route('sales.index') }}"
            class="nav-link rounded d-flex align-items-center gap-2 {{ request()->routeIs('sales.*') ? 'active bg-primary text-white' : 'text-body' }}">

@@ -9,7 +9,7 @@ class installments extends Model
     protected $fillable = [
             'customer', 'product_id', 'product_name', 'product_price',
             'payment_date', 'next_payment_date', 'paid_amount', 
-            'remaining', 'quantity'
+            'remaining', 'quantity','status'
         ];
     
         protected $casts = [

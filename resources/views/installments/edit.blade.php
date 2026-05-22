@@ -41,7 +41,7 @@
 
       <div class="mb-3">
         <label for="payment_date" class="form-label">تاريخ الدفع</label>
-        <input type="date" class="form-control" id="payment_date" name="payment_date" value="{{ $installment->payment_date }}">
+        <input type="date" class="form-control" id="payment_date" name="payment_date" value="{{ \Carbon\Carbon::parse($installment->payment_date)->format('d-m-Y') }}">
       </div>
       
       <div class="mb-3">
@@ -51,7 +51,7 @@
       
       <div class="mb-3">
         <label for="next_payment_date" class="form-label">تاريخ الدفع التالي</label>
-        <input type="date" class="form-control" id="next_payment_date" name="next_payment_date" value="{{ $installment->next_payment_date }}">
+        <input type="date" class="form-control" id="next_payment_date" name="next_payment_date" value="{{ \Carbon\Carbon::parse($installment->next_payment_date)->format('d-m-Y') }}">
       </div>
 
       <div class="mb-3">
@@ -61,7 +61,9 @@
       
       <button type="submit" class="btn btn-primary">تحديث</button>
     </form>
-    
+    <div class="mt-3">
+        <a href="{{ route('installments.index') }}" class="btn btn-danger">رجوع</a>
+    </div>
     @push('scripts')
     <script>
     
