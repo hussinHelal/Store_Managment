@@ -68,10 +68,10 @@ class InvoiceController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(invoice $invoice)
-    {
-        return view('invoice.show', ['invoice' => $invoice]);
-    }
+    // public function show(invoice $invoice)
+    // {
+    //     return view('invoice.show', ['invoice' => $invoice]);
+    // }
 
     /**
      * Show the form for editing the specified resource.

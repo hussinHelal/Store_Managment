@@ -43,10 +43,10 @@ class CategoryController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(category $category)
-    {
-        //
-    }
+    // public function show(category $category)
+    // {
+    //     //
+    // }
 
     /**
      * Show the form for editing the specified resource.

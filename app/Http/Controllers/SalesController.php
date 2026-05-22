@@ -50,11 +50,11 @@ class SalesController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(sales $sales)
-    {
-        $products = products::all();
-        return view('sales.show', ['sales' => $sales, 'products' => $products]); 
-    }
+    // public function show(sales $sales)
+    // {
+    //     $products = products::all();
+    //     return view('sales.show', ['sales' => $sales, 'products' => $products]); 
+    // }
 
     /**
      * Show the form for editing the specified resource.

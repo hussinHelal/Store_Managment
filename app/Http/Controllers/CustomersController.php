@@ -46,10 +46,10 @@ class CustomersController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(customers $customers)
-    {
-        return view('customers.show', ['customers' => $customers]);
-    }
+    // public function show(customers $customers)
+    // {
+    //     return view('customers.show', ['customers' => $customers]);
+    // }
 
     /**
      * Show the form for editing the specified resource.

@@ -51,11 +51,11 @@ class ProductsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(products $products)
-    {
-        //return view('products.show', ['products' => $products]);
-        return redirect()->route('products.index');
-    }
+    // public function show(products $products)
+    // {
+    //     //return view('products.show', ['products' => $products]);
+    //     return redirect()->route('products.index');
+    // }
 
     /**
      * Show the form for editing the specified resource.

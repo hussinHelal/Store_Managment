@@ -29,6 +29,7 @@
         <label for="address" class="form-label">العنوان</label>
         <input type="text" class="form-control" id="address" name="address" value="{{ $customers->address }}">
       </div>
+      
       <button type="submit" class="btn btn-primary">تحديث</button>
     </form>
     

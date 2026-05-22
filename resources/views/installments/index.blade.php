@@ -17,7 +17,7 @@
           <th scope="col">المبلغ</th>
           <th scope="col">الكمية</th>
           <th scope="col">تاريخ الدفع</th>
-          <th scope="col">تاريخ الدفعه التالية</th>
+          <th scope="col">الدفعه التالية</th>
           <th scope="col">المدفوع</th>
           <th scope="col">المتبقي</th>
           <th scope="col">الحالة</th>

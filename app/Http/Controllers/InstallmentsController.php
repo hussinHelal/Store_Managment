@@ -75,10 +75,10 @@ class InstallmentsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(installments $installments)
-    {
-        //return view('installments.show', ['installments' => $installments]);
-    }
+    // public function show(installments $installments)
+    // {
+    //     //return view('installments.show', ['installments' => $installments]);
+    // }
 
     /**
      * Show the form for editing the specified resource.
