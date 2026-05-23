@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('title', ' - العملاء')
 @section('content')
     
 <button class="btn btn-primary"><a href="{{ route('customers.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i> عميل جديد</a></button>
@@ -25,11 +25,11 @@
           <td>{{ $customer->phone }}</td>
           <td>{{ $customer->address }}</td>
           <td>
-              <a href="{{ route('customers.edit', $customer->id) }}" class="btn btn-sm btn-primary">تعديل</a>
+              <a href="{{ route('customers.edit', $customer->id) }}" class="btn btn-sm btn-primary rounded">تعديل</a>
               <form action="{{ route('customers.destroy', $customer->id) }}" method="POST" style="display: inline;">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('هل أنت متأكد من حذف هذا العميل ؟')">حذف</button>
+                  <button type="submit" class="btn btn-sm btn-danger rounded" onclick="return confirm('هل أنت متأكد من حذف هذا العميل ؟')">حذف</button>
               </form>
           </td>
         </tr>

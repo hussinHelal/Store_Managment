@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\BackupController;
 // use App\Http\Controllers\DebtsController;
 use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\SalesController;
@@ -78,14 +79,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
     ->name('invoices.destroy');
         Route::post('/invoices/{invoice}/refund', [InvoiceController::class, 'refund'])->can('refund-invoice', 'invoice')
     ->name('invoices.refund');
+        Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('invoices.print');
 
     Route::resource('/profile', ProfileController::class)->except(['store', 'update', 'destroy']);
         Route::post('/profile', [ProfileController::class, 'store'])->can('create-profile')
     ->name('profile.store');
         Route::put('/profile', [ProfileController::class, 'update'])->can('update-profile')
     ->name('profile.update');
+        Route::put('/profile/users/{user}/role', [ProfileController::class, 'updateUserRole'])
+    ->name('profile.users.role.update');
         Route::delete('/profile', [ProfileController::class, 'destroy'])->can('delete-profile')
     ->name('profile.destroy');
+        Route::get('/backup', [BackupController::class, 'export'])->name('backup.export');
 
     Route::resource('/maintenance', MaintenanceController::class);
     Route::get('/maintenance/{maintenance}/showRepaired', [MaintenanceController::class, 'showRepaired'])->name('maintenance.showRepaired');

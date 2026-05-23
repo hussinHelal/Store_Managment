@@ -3,7 +3,7 @@
 @section('content')
 
     <span class="text-center border border-1 rounded text-bold">تحديث منتج</span>
-    <form action="{{ route('products.update', $product->id) }}" method="POST">
+    <form action="{{ route('products.update', $product->id) }}" method="POST" enctype="multipart/form-data">
       @csrf
       @method('PUT')
       @if ($errors->any())
@@ -46,9 +46,25 @@
         <label for="stock" class="form-label">المخزون</label>
         <input type="number" class="form-control" id="stock" name="stock" value="{{ $product->stock }}">
       </div>
+
+      <div class="mb-3">
+        <label for="image" class="form-label">صورة المنتج</label>
+        <input type="file" class="form-control" id="image" name="image" accept="image/*">
+      </div>
+
+      @if($product->image)
+      <div class="mb-3">
+          <label class="form-label">الصورة الحالية</label>
+          <div>
+              <img src="{{ asset('uploads/products/' . $product->image) }}" alt="Product Image" class="img-fluid rounded" style="max-width: 180px;">
+          </div>
+      </div>
+      @endif
       
       <button type="submit" class="btn btn-primary">تحديث</button>
     </form>
     
-    
+     <div class="mt-3">
+        <a href="{{ route('products.index') }}" class="btn btn-danger">رجوع</a>
+    </div>
 @endsection

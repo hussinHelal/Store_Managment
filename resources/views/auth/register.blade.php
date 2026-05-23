@@ -34,4 +34,9 @@
       <button type="submit" class="btn btn-primary">إنشاء حساب</button>
       
     </form>
+
+     <div class="mt-3">
+        <a href="{{ route('home') }}" class="btn btn-danger">رجوع</a>
+    </div>
+
 @endsection

@@ -57,5 +57,8 @@
       <button type="submit" class="btn btn-primary">تحديث</button>
     </form>
     
+     <div class="mt-3">
+        <a href="{{ route('invoices.index') }}" class="btn btn-danger">رجوع</a>
+    </div>
     
 @endsection

@@ -1,9 +1,17 @@
 @extends('layouts.app')
-
+@section('title', '- الرئيسية')
 @section('main')
 <div class="container-fluid py-4">
     <h1 class="h3 fw-bold text-body mb-1">الرئيسية</h1>
     <p class="text-muted small mb-4">نظرة عامة</p>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 d-flex gap-2 flex-wrap">
+            <a href="{{ route('backup.export') }}" class="btn btn-success" title="تحميل نسخة احتياطية من البيانات">
+                <i class="fas fa-download me-2"></i> تحميل نسخة احتياطية
+            </a>
+        </div>
+    </div>
 
     <div class="row g-3">
         {{-- @php

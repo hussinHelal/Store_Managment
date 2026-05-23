@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('title', '- الفواتير')
 @section('content')
 
 
@@ -30,16 +30,17 @@
           <th scope="row">{{ $invoice->id }}</th>
           <td>{{ $invoice->invoice_number }}</td>
           <td>{{ $invoice->customer }}</td>
-          <td>{{ $invoice->product?->name }}</td>
+          <td>{{ $invoice->product?->name ?? 'محذوف' }}</td>
           <td>{{ $invoice->quantity }}</td>
-          <td>{{ $invoice->product?->price }}</td>
+          <td>{{ $invoice->product?->price ?? $invoice->product_price }}</td>
           <td>{{ $invoice->total_amount }}</td>
           <td>{{ $invoice->paid_amount }}</td>
           <td>{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') }}</td>
           <td>{{ $invoice->total_amount }}</td>
           <td>{{ $invoice->status }}</td>
           <td>
-              <a href="{{ route('invoices.edit', $invoice->id) }}" class="btn btn-sm btn-primary">تعديل</a>
+              <a href="{{ route('invoices.edit', $invoice->id) }}" class="btn btn-sm btn-primary m-1">تعديل</a>
+              <a href="{{ route('invoices.print', $invoice->id) }}" class="btn btn-sm btn-info m-1" title="طباعة الفاتورة"><i class="fas fa-print"></i></a>
               @if($invoice->status !== 'refunded')
               <form action="{{ route('invoices.refund', $invoice->id) }}" method="POST" style="display: inline;">
                   @csrf

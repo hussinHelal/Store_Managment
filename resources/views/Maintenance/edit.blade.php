@@ -50,6 +50,8 @@
       
       <button type="submit" class="btn btn-primary">تحديث</button>
     </form>
-    
+     <div class="mt-3">
+        <a href="{{ route('maintenance.index') }}" class="btn btn-danger">رجوع</a>
+    </div>
     
 @endsection

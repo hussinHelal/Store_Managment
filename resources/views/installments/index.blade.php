@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('title', ' - الديون')
 
 @section('content')
 

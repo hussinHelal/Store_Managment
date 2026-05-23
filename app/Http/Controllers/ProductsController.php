@@ -35,15 +35,26 @@ class ProductsController extends Controller
     public function store(Request $request)
     {
         $validate = $request->validate([
-            'name' => 'required | string',
-            'price' => 'required | numeric',
-            'description' => 'required | string',
-            'stock' => 'required | numeric',
-            'category_id' => 'required|exists:categories,id',
+            'name' => 'required|string',
+            'price' => 'required|numeric',
+            'description' => 'required|string',
+            'stock' => 'required|numeric',
+            'category_id' => 'nullable|exists:categories,id',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
-        
+
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $folder = public_path('uploads/products');
+            if (!file_exists($folder)) {
+                mkdir($folder, 0755, true);
+            }
+            $filename = time() . '_' . preg_replace('/[^A-Za-z0-9\.\-]/', '_', $image->getClientOriginalName());
+            $image->move($folder, $filename);
+            $validate['image'] = $filename;
+        }
+
         products::create($validate);
-        
 
         return redirect()->route('products.index');
     }
@@ -69,33 +80,54 @@ class ProductsController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, products $products,int $id)
+    public function update(Request $request, products $product)
     {
-         if ($request->user()->cannot('update-products', $products)) {
-            abort(403);
+         if ($request->user()->cannot('update-products', $product)) {
+             return redirect()->route('products.index')->with('error','هذا المستخدم ليس لديه صلاحيه لهذا الامر');
         }
         $validate = $request->validate([
-            'name' => 'required | string ',
-            'price' => 'required | numeric',
-            'description' => 'required | string',
-            'stock' => 'required | numeric',
+            'name' => 'required|string',
+            'price' => 'required|numeric',
+            'description' => 'required|string',
+            'stock' => 'required|numeric',
             'category_id' => 'required|exists:categories,id',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
-        products::where('id', $id)->update($validate);
+
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $folder = public_path('uploads/products');
+            if (!file_exists($folder)) {
+                mkdir($folder, 0755, true);
+            }
+            if ($product->image && file_exists($folder . DIRECTORY_SEPARATOR . $product->image)) {
+                @unlink($folder . DIRECTORY_SEPARATOR . $product->image);
+            }
+            $filename = time() . '_' . preg_replace('/[^A-Za-z0-9\.\-]/', '_', $image->getClientOriginalName());
+            $image->move($folder, $filename);
+            $validate['image'] = $filename;
+        }
+
+        $product->update($validate);
         return redirect()->route('products.index');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request, $id)
+    public function destroy(Request $request, products $product)
     {
-        if ($request->user()->cannot('delete-products', Products::class)) {
-            abort(403);
+        if ($request->user()->cannot('delete-products', $product)) {
+            return redirect()->route('products.index')->with('error','هذا المستخدم ليس لديه صلاحيه لهذا الامر');
         }
-        $products = products::findOrFail($id);
-        $products = products::findOrFail($id);
-        $products->delete();
+
+        $folder = public_path('uploads/products');
+        if ($product->image && file_exists($folder . DIRECTORY_SEPARATOR . $product->image)) {
+            @unlink($folder . DIRECTORY_SEPARATOR . $product->image);
+        }
+
+        $product->invoices()->delete();
+        $product->delete();
         return redirect()->route('products.index');
     }
 }

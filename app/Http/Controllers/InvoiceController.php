@@ -55,6 +55,7 @@ class InvoiceController extends Controller
              'quantity'       => $validated['quantity'],
              'invoice_date'   => $validated['invoice_date'],
              'total_amount'   => $total_amount,
+             'product_price'  => $product->price,
              'paid_amount'    => $validated['paid_amount'],
              'status'         => $validated['paid_amount'] >= $total_amount ? 'paid' : 'unpaid',
          ]);
@@ -123,13 +124,14 @@ class InvoiceController extends Controller
          $product->increment('total_sold', $validated['quantity']);
      
          $invoice->update([
-             'customer'     => $validated['customer'],
-             'product_id'   => $validated['product_id'],
-             'quantity'     => $validated['quantity'],
-             'invoice_date' => $validated['invoice_date'],
-             'total_amount' => $total_amount,
-             'paid_amount'  => $validated['paid_amount'],
-             'status'       => $validated['paid_amount'] >= $total_amount ? 'paid' : 'unpaid',
+             'customer'      => $validated['customer'],
+             'product_id'    => $validated['product_id'],
+             'quantity'      => $validated['quantity'],
+             'invoice_date'  => $validated['invoice_date'],
+             'total_amount'  => $total_amount,
+             'product_price' => $product->price,
+             'paid_amount'   => $validated['paid_amount'],
+             'status'        => $validated['paid_amount'] >= $total_amount ? 'paid' : 'unpaid',
          ]);
      
          return redirect()->route('invoices.index')->with('success', 'تم تحديث الفاتورة بنجاح.');
@@ -168,5 +170,11 @@ class InvoiceController extends Controller
         ]);
 
         return redirect()->route('invoices.index')->with('success', 'Invoice refunded successfully.');
+    }
+
+    public function print(invoice $invoice)
+    {
+        $invoice->load('product');
+        return view('invoice.print', ['invoice' => $invoice]);
     }
 }

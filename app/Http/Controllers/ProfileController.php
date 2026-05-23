@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\profile;
 use App\Models\User;
+use App\Enums\UserRole;
 
 class ProfileController extends Controller
 {
@@ -13,9 +14,18 @@ class ProfileController extends Controller
      */
     public function index()
     {
-        // $profiles = profile::all();
-        $profile = User::findOrFail(auth()->user()->id);
-        return view('profile.index', compact('profile'));
+        $profile = auth()->user();
+        $users = null;
+        $roles = [];
+
+        if ($profile->isSuperAdmin()) {
+            $users = User::where('id', '!=', $profile->id)
+                ->orderByRaw("FIELD(role, 'superadmin', 'admin', 'cashier')")
+                ->get();
+            $roles = UserRole::options();
+        }
+
+        return view('profile.index', compact('profile', 'users', 'roles'));
     }
 
     /**
@@ -54,9 +64,9 @@ class ProfileController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, profile $profile)
+    public function update(Request $request)
     {
-        if ($request->user()->cannot('update-profile', $profile)) {
+        if ($request->user()->cannot('update', profile::class)) {
             abort(403);
         }
 
@@ -64,33 +74,63 @@ class ProfileController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
             'password' => 'nullable|string|min:8|confirmed',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
-        $user = User::findOrFail(auth()->user()->id);
-        
+
+        $user = auth()->user();
+
+        if ($request->hasFile('photo')) {
+            $photo = $request->file('photo');
+            $folder = public_path('uploads/users');
+            if (!file_exists($folder)) {
+                mkdir($folder, 0755, true);
+            }
+            if ($user->photo && file_exists($folder . DIRECTORY_SEPARATOR . $user->photo)) {
+                @unlink($folder . DIRECTORY_SEPARATOR . $user->photo);
+            }
+            $filename = time() . '_' . preg_replace('/[^A-Za-z0-9\.\-]/', '_', $photo->getClientOriginalName());
+            $photo->move($folder, $filename);
+            $validated['photo'] = $filename;
+        }
+
         if (!empty($validated['password'])) {
-        $validated['password'] = bcrypt($validated['password']);
+            $validated['password'] = bcrypt($validated['password']);
         } else {
             unset($validated['password']);
         }
-        
 
         $user->update($validated);
-            // $profile->update($validated);
-        
+
         return redirect()->route('profile.index');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request, profile $profile,$id)
+    public function destroy(Request $request, $id)
     {
-        if ($request->user()->cannot('delete-profile', $profile)) {
+        if ($request->user()->cannot('destroy', profile::class)) {
             abort(403);
         }
+
         $user = User::findOrFail($id);
         $user->delete();
-        $profile->delete();
+
         return redirect()->route('profile.index');
+    }
+
+    public function updateUserRole(Request $request, User $user)
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            abort(403, 'Only superadmin can assign roles.');
+        }
+
+        $validated = $request->validate([
+            'role' => 'required|in:cashier,admin,superadmin',
+        ]);
+
+        $user->update(['role' => $validated['role']]);
+
+        return redirect()->route('profile.index')->with('success', 'تم تحديث دور المستخدم بنجاح.');
     }
 }

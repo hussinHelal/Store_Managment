@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+@section('title', ' - الأصناف')
 @section('content')
 
     <button class="btn btn-primary"><a href="{{ route('categories.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i> صنف جديد</a></button> <br>

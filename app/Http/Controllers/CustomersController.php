@@ -31,7 +31,7 @@ class CustomersController extends Controller
     public function store(Request $request)
     {
          if ($request->user()->cannot('create-customers', customers::class)) {
-            abort(403);
+             return redirect()->route('customers.index')->with('error','هذا المستخدم ليس لديه صلاحيه لهذا الامر');
         }
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -65,7 +65,7 @@ class CustomersController extends Controller
     public function update(Request $request, customers $customer)
     {
         if ($request->user()->cannot('update-customers', $customer)) {
-            abort(403);
+            return redirect()->route('customers.index')->with('error','هذا المستخدم ليس لديه صلاحيه لهذا الامر');
         }
         Log::info('Customer updating', ['id' => $customer->id]);
         $validated = $request->validate([
@@ -82,12 +82,13 @@ class CustomersController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request, customers $customers)
+    public function destroy(Request $request, customers $customer)
     {
-        if ($request->user()->cannot('delete-customers', $customers)) {
-            abort(403);
+        if ($request->user()->cannot('delete-customers', $customer)) {
+            return redirect()->route('customers.index')->with('error','هذا المستخدم ليس لديه صلاحيه لهذا الامر');
         }
-        $customers->delete();
+        Log::info('Customer deleting', ['id' => $customer->id]);
+        $customer->delete();
         return redirect()->route('customers.index');
     }
 }

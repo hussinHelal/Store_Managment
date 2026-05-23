@@ -17,6 +17,7 @@
           <th scope="col">الوصف</th>
           <th scope="col">الصنف</th>
           <th scope="col">المخزون</th>
+          <th scope="col">الصورة</th>
           <th scope="col">الإجراءات</th>
         </tr>
       </thead>
@@ -27,8 +28,15 @@
           <td>{{ $product->name }}</td>
           <td>{{ $product->price }}</td>
           <td>{{ $product->description }}</td>
-          <td>{{ $product->category?->name ?? 'بدون صنف'}}</td>
+          <td>{{ $product->category?->name ?? 'لايوجد'}}</td>
           <td>{{ $product->stock }}</td>
+          <td>
+              @if($product->image)
+                <img src="{{ asset('uploads/products/' . $product->image) }}" alt="Product Image" class="img-fluid rounded" style="max-width: 60px; height: 60px; object-fit: cover;">
+              @else
+                <span class="text-muted">لا توجد صورة</span>
+              @endif
+          </td>
           <td>
               <a href="{{ route('products.edit', $product->id) }}" class="btn btn-sm btn-primary">تعديل</a>
               <form action="{{ route('products.destroy', $product->id) }}" method="POST" style="display: inline;">

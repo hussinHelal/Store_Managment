@@ -3,7 +3,7 @@
 @section('content')
 
     <span class="text-center border border-1 rounded text-bold">انشاء منتج</span>
-    <form action="{{ route('products.store') }}" method="POST">
+    <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data">
       @csrf
       @if ($errors->any())
           <div class="alert alert-danger">
@@ -45,9 +45,17 @@
         <label for="stock" class="form-label">المخزون</label>
         <input type="number" class="form-control" id="stock" name="stock">
       </div>
+
+      <div class="mb-3">
+        <label for="image" class="form-label">صورة المنتج</label>
+        <input type="file" class="form-control" id="image" name="image" accept="image/*">
+      </div>
       
       <button type="submit" class="btn btn-primary">انشاء</button>
     </form>
     
+     <div class="mt-3">
+        <a href="{{ route('products.index') }}" class="btn btn-danger">رجوع</a>
+    </div>
     
 @endsection

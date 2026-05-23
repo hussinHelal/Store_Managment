@@ -2,8 +2,8 @@
 
 @section('content')
 
-    <span class="text-center border border-1 rounded text-bold">تحديث فاتورة</span>
-    <form action="{{ route('profile.update', $user->id) }}" method="POST">
+    <span class="text-center border border-1 rounded text-bold">تحديث الملف الشخصي</span>
+    <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
       @csrf
       @method('PUT')
       @if ($errors->any())
@@ -35,6 +35,20 @@
         <label for="password_confirmation" class="form-label">تأكيد كلمة المرور</label>
         <input type="password" class="form-control" id="password_confirmation" name="password_confirmation">
       </div>
+
+      <div class="mb-3">
+        <label for="photo" class="form-label">الصورة الشخصية</label>
+        <input type="file" class="form-control" id="photo" name="photo" accept="image/*">
+      </div>
+
+      @if($user->photo)
+      <div class="mb-3">
+          <label class="form-label">الصورة الحالية</label>
+          <div>
+              <img src="{{ asset('uploads/users/' . $user->photo) }}" alt="User Photo" class="img-fluid rounded" style="max-width: 180px;">
+          </div>
+      </div>
+      @endif
       
       {{-- <div class="mb-3">
         <label for="role" class="form-label">الدور</label>
