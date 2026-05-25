@@ -1,0 +1,6 @@
+# Ignore temporary package folder
+/package/
+
+# Ignore build artifacts
+*.exe
+installer_build/

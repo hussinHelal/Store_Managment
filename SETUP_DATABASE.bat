@@ -2,8 +2,11 @@
 REM Store Management System - Database Initialization
 REM Run this file once to set up the database
 
+<<<<<<< HEAD
 setlocal enabledelayedexpansion
 
+=======
+>>>>>>> 0e2ecca182843b2481ba3dd9aad86f25ce5eb5ad
 echo.
 echo ========================================
 echo Store Management - Database Setup
@@ -12,6 +15,7 @@ echo.
 
 cd /d "%~dp0"
 
+<<<<<<< HEAD
 set "PHP_EXEC="
 if exist "%~dp0php\php.exe" (
     set "PHP_EXEC=%~dp0php\php.exe"
@@ -39,6 +43,8 @@ if not exist ".env" (
     )
 )
 
+=======
+>>>>>>> 0e2ecca182843b2481ba3dd9aad86f25ce5eb5ad
 REM Check if database directory exists
 if not exist "database" (
     mkdir database
@@ -47,7 +53,11 @@ if not exist "database" (
 
 REM Run Laravel migrations
 echo [*] Initializing database...
+<<<<<<< HEAD
 "%PHP_EXEC%" artisan migrate --force
+=======
+php artisan migrate --force
+>>>>>>> 0e2ecca182843b2481ba3dd9aad86f25ce5eb5ad
 if errorlevel 1 (
     echo [ERROR] Database initialization failed
     pause
@@ -56,7 +66,11 @@ if errorlevel 1 (
 
 REM Seed initial data (optional)
 echo [*] Seeding initial data...
+<<<<<<< HEAD
 "%PHP_EXEC%" artisan db:seed --force 2>nul
+=======
+php artisan db:seed --force 2>nul
+>>>>>>> 0e2ecca182843b2481ba3dd9aad86f25ce5eb5ad
 
 echo.
 echo ========================================
