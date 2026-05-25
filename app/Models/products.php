@@ -10,18 +10,18 @@ use App\Models\installments;
 
 class products extends Model
 {
-    protected $fillable = ['name', 'price', 'quantity', 'description', 'stock', 'category_id', 'image'];
-    
+    protected $fillable = ['name', 'price', 'description', 'barcode', 'stock', 'category_id', 'image'];
+
     public function category()
     {
         return $this->belongsTo(category::class, 'category_id');
     }
-    
+
     public function sales()
     {
         return $this->hasMany(sales::class, 'product_id');
     }
-    
+
     public function installments()
     {
         return $this->hasMany(installments::class, 'product_id');
@@ -32,3 +32,7 @@ class products extends Model
         return $this->hasMany(invoice::class, 'product_id');
     }
 }
+
+
+
+

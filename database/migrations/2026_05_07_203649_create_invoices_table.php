@@ -21,8 +21,9 @@ return new class extends Migration
             $table->string('status');
             $table->decimal('total_amount', 10, 2);
             $table->decimal('product_price', 10, 2)->nullable();
+            $table->text('items')->nullable();
             $table->decimal('paid_amount', 10, 2);
-            
+
             $table->timestamps();
         });
     }

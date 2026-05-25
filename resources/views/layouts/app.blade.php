@@ -9,6 +9,7 @@
         <div class="d-flex">
             @include('components.sidebar')
             <main class="flex-grow-1 p-4">
+                @include('components.alerts')
                 @yield('main')
                 @yield('content')
             </main>
@@ -16,8 +17,8 @@
         </div>
 
         @include('components.foot')
-        
+
         @stack('scripts')
-        
+
     </body>
 </html>

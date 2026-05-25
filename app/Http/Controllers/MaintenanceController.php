@@ -12,7 +12,7 @@ class MaintenanceController extends Controller
      */
     public function index()
     {
-        $maintenances = Maintenance::all();
+        $maintenances = Maintenance::orderBy('id', 'desc')->paginate(15);
         return view('Maintenance.index', compact('maintenances'));
     }
 
@@ -72,8 +72,7 @@ class MaintenanceController extends Controller
             'description' => 'required|string|max:255',
             'status' => 'required|string|max:255',
             'phone' => 'required|string|max:255',
-            'address' => 'required|string|max:255',            
-            'requested_date' => 'required|date',
+            'address' => 'required|string|max:255',
             'completed_date' => 'nullable|date',
         ]);
 

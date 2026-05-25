@@ -4,15 +4,7 @@
     <form action="{{ route('installments.pay', $installment) }}" method="POST">
       @csrf
       @method('PUT')
-      @if ($errors->any())
-          <div class="alert alert-danger">
-              <ul class="mb-0" style="list-style-type: none; padding: 0;">
-                  @foreach ($errors->all() as $error)
-                      <li>{{ $error }}</li>
-                  @endforeach
-              </ul>
-          </div>
-      @endif
+
 
       <div class="mb-3">
         <label class="form-label">سعر المنتج</label>
@@ -31,13 +23,13 @@
 
       <div class="mb-3">
         <label for="paid_amount" class="form-label">المبلغ المدفوع الآن</label>
-        <input type="number" class="form-control" id="paid_amount" name="paid_amount" 
+        <input type="number" class="form-control" id="paid_amount" name="paid_amount"
                value="0" min="1" max="{{ $installment->remaining }}">
       </div>
 
       <div class="mb-3">
         <label for="remaining_after" class="form-label">المتبقي بعد الدفع</label>
-        <input type="number" class="form-control" id="remaining_after" 
+        <input type="number" class="form-control" id="remaining_after"
                value="{{ $installment->remaining }}" readonly>
       </div>
 

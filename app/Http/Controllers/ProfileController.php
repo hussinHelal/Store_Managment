@@ -20,8 +20,8 @@ class ProfileController extends Controller
 
         if ($profile->isSuperAdmin()) {
             $users = User::where('id', '!=', $profile->id)
-                ->orderByRaw("FIELD(role, 'superadmin', 'admin', 'cashier')")
-                ->get();
+                ->orderByRaw("CASE role WHEN 'superadmin' THEN 1 WHEN 'admin' THEN 2 WHEN 'cashier' THEN 3 ELSE 4 END")
+                ->paginate(15);
             $roles = UserRole::options();
         }
 

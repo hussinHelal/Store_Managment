@@ -14,8 +14,7 @@ class ProductsController extends Controller
      */
     public function index()
     {
-        // $products = products::all();
-        $products = products::with('category')->get();
+        $products = products::with('category')->orderBy('id', 'desc')->paginate(15);
         $categories = category::all();
         return view('products.index', compact('products', 'categories'));
     }
@@ -38,6 +37,7 @@ class ProductsController extends Controller
             'name' => 'required|string',
             'price' => 'required|numeric',
             'description' => 'required|string',
+            'barcode' => 'nullable|string|max:255|unique:products,barcode',
             'stock' => 'required|numeric',
             'category_id' => 'nullable|exists:categories,id',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
@@ -89,6 +89,7 @@ class ProductsController extends Controller
             'name' => 'required|string',
             'price' => 'required|numeric',
             'description' => 'required|string',
+            'barcode' => 'nullable|string|max:255|unique:products,barcode,' . $product->id,
             'stock' => 'required|numeric',
             'category_id' => 'required|exists:categories,id',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',

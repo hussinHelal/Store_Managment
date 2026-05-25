@@ -84,21 +84,42 @@ class BackupController extends Controller
             ])->toArray()),
         ];
 
-        $filename = 'backup-' . now()->format('YmdHis') . '.zip';
-        $tempFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $filename;
+        $filename = 'backup-' . now()->format('YmdHis');
+        $tempFile = $this->createArchive($files, $filename);
 
-        $zip = new ZipArchive();
-        if ($zip->open($tempFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            abort(500, 'Unable to create backup file.');
+        return response()->download($tempFile, basename($tempFile))->deleteFileAfterSend(true);
+    }
+
+    private function createArchive(array $files, string $filename): string
+    {
+        if (class_exists('ZipArchive')) {
+            $archiveFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $filename . '.zip';
+            $zip = new ZipArchive();
+            if ($zip->open($archiveFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                abort(500, 'Unable to create backup file.');
+            }
+            foreach ($files as $name => $content) {
+                $zip->addFromString($name, $content);
+            }
+            $zip->close();
+            return $archiveFile;
         }
 
-        foreach ($files as $name => $content) {
-            $zip->addFromString($name, $content);
+        if (class_exists('PharData')) {
+            $archiveFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $filename . '.tar';
+            try {
+                @unlink($archiveFile);
+                $tar = new \PharData($archiveFile);
+                foreach ($files as $name => $content) {
+                    $tar->addFromString($name, $content);
+                }
+            } catch (\Exception $e) {
+                abort(500, 'Unable to create backup archive: ' . $e->getMessage());
+            }
+            return $archiveFile;
         }
 
-        $zip->close();
-
-        return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
+        abort(500, 'Backup requires the ZipArchive or PharData PHP extension. Please enable ext-zip or ext-phar.');
     }
 
     private function buildCsv(array $rows): string

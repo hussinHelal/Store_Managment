@@ -1,13 +1,16 @@
 @extends('layouts.app')
 @section('title', ' - العملاء')
 @section('content')
-    
-<button class="btn btn-primary"><a href="{{ route('customers.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i> عميل جديد</a></button>
 
-<div class="row justify-content-center">
-    <span class="fw-bold text-body text-center">العملاء</span>
+<div class="page-header">
+    <h1>العملاء</h1>
+    <a href="{{ route('customers.create') }}" class="btn btn-primary btn-round">
+        <i class="fas fa-plus me-1"></i> عميل جديد
+    </a>
 </div>
-<table class="table  table-hover table-striped ">
+
+<div class="table-wrapper table-responsive">
+    <table class="table table-hover table-striped align-middle mb-0">
       <thead class="table-dark">
           <tr>
             <th scope="col">#</th>
@@ -18,7 +21,7 @@
         </tr>
       </thead>
       <tbody>
-          @foreach($customers as $customer)
+          @forelse($customers as $customer)
         <tr>
           <th scope="row">{{ $customer->id }}</th>
           <td>{{ $customer->name }}</td>
@@ -29,12 +32,19 @@
               <form action="{{ route('customers.destroy', $customer->id) }}" method="POST" style="display: inline;">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-danger rounded" onclick="return confirm('هل أنت متأكد من حذف هذا العميل ؟')">حذف</button>
+                  <button type="submit" class="btn btn-sm btn-danger rounded" onclick="return confirm('هل أنت متأكد من حذف هذا العميل؟')">حذف</button>
               </form>
           </td>
         </tr>
-        @endforeach
+        @empty
+        <tr>
+            <td colspan="5" class="text-center">لا يوجد عملاء.</td>
+        </tr>
+        @endforelse
       </tbody>
     </table>
-    
+
+    @include('components.pagination', ['collection' => $customers])
+</div>
+
 @endsection

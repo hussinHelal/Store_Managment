@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\installments;
 use App\Models\products;
+use App\Models\AppNotification;
+use App\Models\invoice;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +17,7 @@ class InstallmentsController extends Controller
      */
     public function index()
     {
-        $installments = Installments::with('product')->get(); 
+        $installments = Installments::with('product')->orderBy('id', 'desc')->paginate(15);
         $products = products::all();
         return view('installments.index', ['installments' => $installments, 'products' => $products]);
     }
@@ -23,10 +25,10 @@ class InstallmentsController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create(products $products)
+    public function create()
     {
-        $product = $products::all();
-        return view('installments.create', ['product' => $product]);
+        $products = products::all();
+        return view('installments.create', ['products' => $products]);
     }
 
     /**
@@ -38,39 +40,69 @@ class InstallmentsController extends Controller
              return redirect()->route('installments.index')
                  ->with('error', 'You do not have permission to create installments.');
          }
-     
+
          $validate = $request->validate([
              'customer'          => 'required|string|max:255',
-             'product_id'        => 'required|exists:products,id',
+             'product_ids'       => 'required|array|min:1',
+             'product_ids.*'     => 'required|exists:products,id',
+             'quantities'        => 'required|array|min:1',
+             'quantities.*'      => 'required|integer|min:1',
              'payment_date'      => 'nullable|date',
              'next_payment_date' => 'nullable|date',
              'paid_amount'       => 'nullable|numeric|min:0',
-             'quantity'          => 'nullable|integer|min:1',
          ]);
-     
-         $product = Products::findOrFail($validate['product_id']);
-     
-         $quantity     = $validate['quantity'] ?? 1;
-         $totalAmount  = $product->price * $quantity;
-         $paidAmount   = $validate['paid_amount'] ?? 0;
-     
+
+         $items = [];
+         $totalQuantity = 0;
+         $totalAmount = 0;
+
+         foreach ($validate['product_ids'] as $index => $productId) {
+             $quantity = intval($validate['quantities'][$index] ?? 1);
+             $product = products::findOrFail($productId);
+             $lineTotal = $product->price * $quantity;
+
+             $items[] = [
+                 'product_id' => $product->id,
+                 'name'       => $product->name,
+                 'price'      => $product->price,
+                 'quantity'   => $quantity,
+                 'line_total' => $lineTotal,
+             ];
+
+             $totalQuantity += $quantity;
+             $totalAmount += $lineTotal;
+         }
+
+         $firstProduct = products::findOrFail($validate['product_ids'][0]);
+         $paidAmount = $validate['paid_amount'] ?? 0;
          $status = ($paidAmount >= $totalAmount) ? 'مكتمل' : 'غير مكتمل';
-     
+
          Installments::create([
              'customer'          => $validate['customer'],
-             'product_id'        => $product->id,
-             'product_name'      => $product->name,
-             'product_price'     => $product->price,
-             'quantity'          => $quantity,
+             'product_id'        => $firstProduct->id,
+             'product_name'      => collect($items)->pluck('name')->implode(', '),
+             'product_price'     => $totalAmount,
+             'quantity'          => $totalQuantity,
              'payment_date'      => $validate['payment_date'] ? Carbon::parse($validate['payment_date'])->format('Y-m-d') : null,
              'next_payment_date' => $validate['next_payment_date'] ? Carbon::parse($validate['next_payment_date'])->format('Y-m-d') : null,
              'paid_amount'       => $paidAmount,
              'remaining'         => $totalAmount - $paidAmount,
-             'status'            => $status,          
+             'status'            => $status,
+             'items'             => $items,
          ]);
-     
-         return redirect()->route('installments.index')
-             ->with('success', 'تم إضافة الدين بنجاح');
+
+        try {
+            AppNotification::create([
+                'title' => 'تم إضافة دين',
+                'message' => 'تم إضافة دين للعميل ' . $validate['customer'],
+                'is_active' => true,
+                'created_by' => $request->user()->id,
+            ]);
+        } catch (\Exception $e) {
+        }
+
+        return redirect()->route('installments.index')
+            ->with('success', 'تم إضافة الدين بنجاح');
      }
     /**
      * Display the specified resource.
@@ -83,10 +115,10 @@ class InstallmentsController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(installments $installment, products $products)
+    public function edit(installments $installment)
     {
-        $product = $products::all();
-        return view('installments.edit', ['installment' => $installment, 'product' => $product]);
+        $products = products::all();
+        return view('installments.edit', ['installment' => $installment, 'products' => $products]);
     }
 
     /**
@@ -98,39 +130,69 @@ class InstallmentsController extends Controller
              return redirect()->route('installments.index')
                  ->with('error', 'You do not have permission to update installments.');
          }
-     
+
          $validate = $request->validate([
              'customer'          => 'required|string|max:255',
-             'product_id'        => 'required|exists:products,id',
+             'product_ids'       => 'required|array|min:1',
+             'product_ids.*'     => 'required|exists:products,id',
+             'quantities'        => 'required|array|min:1',
+             'quantities.*'      => 'required|integer|min:1',
              'payment_date'      => 'nullable|date',
              'next_payment_date' => 'nullable|date',
              'paid_amount'       => 'nullable|numeric|min:0',
-             'quantity'          => 'nullable|integer|min:1',
          ]);
-     
-         $product = Products::findOrFail($validate['product_id']);
-     
-         $quantity     = $validate['quantity'] ?? 1;
-         $totalAmount  = $product->price * $quantity;
-         $paidAmount   = $validate['paid_amount'] ?? 0;
-     
+
+         $items = [];
+         $totalQuantity = 0;
+         $totalAmount = 0;
+
+         foreach ($validate['product_ids'] as $index => $productId) {
+             $quantity = intval($validate['quantities'][$index] ?? 1);
+             $product = products::findOrFail($productId);
+             $lineTotal = $product->price * $quantity;
+
+             $items[] = [
+                 'product_id' => $product->id,
+                 'name'       => $product->name,
+                 'price'      => $product->price,
+                 'quantity'   => $quantity,
+                 'line_total' => $lineTotal,
+             ];
+
+             $totalQuantity += $quantity;
+             $totalAmount += $lineTotal;
+         }
+
+         $firstProduct = products::findOrFail($validate['product_ids'][0]);
+         $paidAmount = $validate['paid_amount'] ?? 0;
          $status = ($paidAmount >= $totalAmount) ? 'مكتمل' : 'غير مكتمل';
-     
+
          $installment->update([
              'customer'          => $validate['customer'],
-             'product_id'        => $product->id,
-             'product_name'      => $product->name,
-             'product_price'     => $product->price,
-             'quantity'          => $quantity,
+             'product_id'        => $firstProduct->id,
+             'product_name'      => collect($items)->pluck('name')->implode(', '),
+             'product_price'     => $totalAmount,
+             'quantity'          => $totalQuantity,
              'payment_date'      => $validate['payment_date'] ? Carbon::parse($validate['payment_date'])->format('Y-m-d') : null,
              'next_payment_date' => $validate['next_payment_date'] ? Carbon::parse($validate['next_payment_date'])->format('Y-m-d') : null,
              'paid_amount'       => $paidAmount,
              'remaining'         => $totalAmount - $paidAmount,
-             'status'            => $status,               
+             'status'            => $status,
+             'items'             => $items,
          ]);
-     
-         return redirect()->route('installments.index')
-             ->with('success', 'تم تحديث الدين بنجاح');
+
+        try {
+            AppNotification::create([
+                'title' => 'تم تحديث دين',
+                'message' => 'تم تحديث الدين #' . $installment->id,
+                'is_active' => true,
+                'created_by' => $request->user()->id,
+            ]);
+        } catch (\Exception $e) {
+        }
+
+        return redirect()->route('installments.index')
+            ->with('success', 'تم تحديث الدين بنجاح');
      }
 
     /**
@@ -143,8 +205,18 @@ class InstallmentsController extends Controller
         }
         Log::info('Deleting installment: ' . $id);
         $installment = installments::findOrFail($id);
+        try {
+            AppNotification::create([
+                'title' => 'تم حذف دين',
+                'message' => 'تم حذف الدين #' . $installment->id,
+                'is_active' => true,
+                'created_by' => request()->user()->id,
+            ]);
+        } catch (\Exception $e) {
+        }
+
         $installment->delete();
-        
+
         return redirect()->route('installments.index');
     }
 
@@ -164,7 +236,7 @@ class InstallmentsController extends Controller
         $newRemaining   = $installment->remaining   - $validated['paid_amount'];
         $newStatus      = $newRemaining <= 0 ? 'مكتمل' : 'غير مكتمل';
         $newNextPayment = $newStatus === 'مكتمل' ? null : Carbon::now()->addMonth();
-    
+
         $installment->update([
             'paid_amount'      => $newPaidAmount,
             'remaining'        => $newRemaining,
@@ -172,7 +244,40 @@ class InstallmentsController extends Controller
             'paid_at'          => Carbon::now(),
             'next_payment_date'=> $newNextPayment,
         ]);
-    
+
+        try {
+            AppNotification::create([
+                'title' => 'تم استلام دفعة',
+                'message' => 'تم استلام دفعة بمبلغ ' . $validated['paid_amount'] . ' على الدين #' . $installment->id,
+                'is_active' => true,
+                'created_by' => $request->user()->id,
+            ]);
+        } catch (\Exception $e) {
+        }
+
+        // Sync invoice paid status and amount
+        try {
+            $inv = $installment->invoice;
+            if ($inv) {
+                $inv->paid_amount = ($inv->paid_amount ?? 0) + $validated['paid_amount'];
+                if ($inv->paid_amount >= $inv->total_amount) {
+                    $inv->paid_amount = $inv->total_amount;
+                    $inv->status = 'paid';
+                    try {
+                        AppNotification::create([
+                            'title' => 'تم دفع الفاتورة',
+                            'message' => 'تم دفع الفاتورة #' . $inv->invoice_number,
+                            'is_active' => true,
+                            'created_by' => $request->user()->id,
+                        ]);
+                    } catch (\Exception $e) {
+                    }
+                }
+                $inv->save();
+            }
+        } catch (\Exception $e) {
+        }
+
         return redirect()->route('installments.index');
     }
 

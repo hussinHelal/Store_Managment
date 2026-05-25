@@ -37,3 +37,45 @@ aside {
     color: var(--card-text);
     border-color: #495057;
 }
+
+.table-responsive {
+    min-height: 1px;
+    overflow-x: auto;
+}
+
+.table-wrapper {
+    background-color: var(--card-bg);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    box-shadow: 0 0.75rem 1.5rem rgba(18, 38, 63, 0.04);
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.table td, .table th {
+    vertical-align: middle;
+}
+
+.btn-round {
+    border-radius: 0.65rem;
+}
+
+.dashboard-card {
+    border-radius: 1rem;
+}
+
+.chart-container {
+    min-height: 300px;
+}

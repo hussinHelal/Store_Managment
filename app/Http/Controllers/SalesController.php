@@ -19,7 +19,8 @@ class SalesController extends Controller
             ->where('invoices.status', '!=', 'refunded')
             ->selectRaw('SUM(invoices.quantity) as sold_quantity')
             ->groupBy('products.id', 'products.name')
-            ->get();
+            ->orderByDesc('sold_quantity')
+            ->paginate(15);
 
         return view('sales.index', ['soldProducts' => $soldProducts]);
     }
@@ -37,7 +38,7 @@ class SalesController extends Controller
      */
     public function store(Request $request)
     {
-        
+
         $validate = $request->validate([
             'name' => 'required',
             'quantity' => 'required',
@@ -53,7 +54,7 @@ class SalesController extends Controller
     // public function show(sales $sales)
     // {
     //     $products = products::all();
-    //     return view('sales.show', ['sales' => $sales, 'products' => $products]); 
+    //     return view('sales.show', ['sales' => $sales, 'products' => $products]);
     // }
 
     /**

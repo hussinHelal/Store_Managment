@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\category;
-use Illuminate\Http\Request;    
+use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
@@ -12,8 +12,8 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $category = category::all();
-        return view('category.index', ['categories' => $category]);
+        $categories = category::orderBy('name')->paginate(15);
+        return view('category.index', ['categories' => $categories]);
     }
 
     /**
@@ -64,7 +64,7 @@ class CategoryController extends Controller
         if ($request->user()->cannot('update-category', $category)) {
             abort(403);
         }
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
         ]);

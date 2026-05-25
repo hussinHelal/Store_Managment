@@ -1,12 +1,13 @@
 @extends('layouts.app')
 @section('title', '- المنتجات المباعة')
 @section('content')
-    
-<div class="row justify-content-center">
-    <span class="fw-bold text-body text-center ">المنتجات</span>
+
+<div class="page-header">
+    <h1>المنتجات المباعة</h1>
 </div>
 
-    <table class="table  table-hover table-striped ">
+<div class="table-wrapper table-responsive">
+    <table class="table table-hover table-striped align-middle mb-0">
       <thead class="table-dark">
         <tr>
           <th scope="col">#</th>
@@ -17,7 +18,7 @@
       <tbody>
           @forelse($soldProducts as $product)
         <tr>
-          <th scope="row">{{ $loop->iteration }}</th>
+          <th scope="row">{{ $product->id }}</th>
           <td>{{ $product->name }}</td>
           <td>{{ $product->sold_quantity }}</td>
         </tr>
@@ -28,5 +29,8 @@
         @endforelse
       </tbody>
     </table>
-    
+
+    @include('components.pagination', ['collection' => $soldProducts])
+</div>
+
 @endsection

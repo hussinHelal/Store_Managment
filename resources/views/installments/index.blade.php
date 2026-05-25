@@ -3,13 +3,15 @@
 
 @section('content')
 
-    <button class="btn btn-primary"><a href="{{ route('installments.create') }}" class="text-white nav-link"><i class="fas fa-plus"></i> دين جديد</a></button>
+<div class="page-header">
+    <h1>الديون</h1>
+    <a href="{{ route('installments.create') }}" class="btn btn-primary btn-round">
+        <i class="fas fa-plus me-1"></i> دين جديد
+    </a>
+</div>
 
-    <div class="row justify-content-center">
-        <span class="fw-bold text-body text-center">الديون</span>
-    </div>
-
-    <table class="table  table-hover table-striped ">
+<div class="table-wrapper table-responsive">
+    <table class="table table-hover table-striped align-middle mb-0">
       <thead class="table-dark">
         <tr>
           <th scope="col">#</th>
@@ -26,17 +28,17 @@
         </tr>
       </thead>
       <tbody>
-          @foreach($installments as $installment)
+          @forelse($installments as $installment)
         <tr>
           <th scope="row">{{ $installment->id }}</th>
-          <td>{{ $installment->customer }}</td> 
-          <td>{{ $installment->product?->name ?? 'لا يوجد اسم' }}</td>
-          <td>{{ $installment->product?->price ?? 'لا يوجد سعر' }}</td>
-          <td>{{ $installment->quantity ?? 'لا يوجد كمية' }}</td>
+          <td>{{ $installment->customer }}</td>
+          <td>{{ $installment->item_names ?: ($installment->product?->name ?? 'لا يوجد اسم') }}</td>
+          <td>{{ $installment->product?->price ?? $installment->product_price ?? 'لا يوجد سعر' }}</td>
+          <td>{{ $installment->item_quantity ?: ($installment->quantity ?? 'لا يوجد كمية') }}</td>
           <td>{{ \Carbon\Carbon::parse($installment->payment_date)->format('Y-m-d') }}</td>
           <td>{{ \Carbon\Carbon::parse($installment->next_payment_date)->format('Y-m-d') }}</td>
           <td>{{ $installment->paid_amount }}</td>
-          <td>{{ $installment->remaining }}</td> 
+          <td>{{ $installment->remaining }}</td>
           <td>{{ $installment->status }}</td>
           <td>
               <a href="{{ route('installments.edit', $installment->id) }}" class="btn btn-sm btn-primary m-1 rounded">تعديل</a>
@@ -44,13 +46,19 @@
               <form action="{{ route('installments.destroy', $installment->id) }}" method="POST" style="display: inline;">
                   @csrf
                   @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-danger rounded" onclick="return confirm('هل أنت متأكد من حذف هذا الدين؟')" >حذف</button>
+                  <button type="submit" class="btn btn-sm btn-danger rounded" onclick="return confirm('هل أنت متأكد من حذف هذا الدين؟')">حذف</button>
               </form>
           </td>
         </tr>
-        @endforeach
+        @empty
+        <tr>
+            <td colspan="11" class="text-center">لا توجد ديون.</td>
+        </tr>
+        @endforelse
       </tbody>
     </table>
-    
+
+    @include('components.pagination', ['collection' => $installments])
+</div>
+
 @endsection
-              

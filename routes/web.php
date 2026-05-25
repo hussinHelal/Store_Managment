@@ -16,6 +16,7 @@ use App\Http\Controllers\InstallmentsController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\AppNotificationController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
@@ -27,7 +28,7 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::get('/showRegister', [AuthController::class, 'showRegister'])->name('showRegister');
 
 Route::middleware(['auth:sanctum'])->group(function () {
-    
+
     Route::resource('/users', UserController::class);
 
     Route::resource('/installments', InstallmentsController::class)->except(['store', 'update', 'destroy']);
@@ -91,6 +92,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/profile', [ProfileController::class, 'destroy'])->can('delete-profile')
     ->name('profile.destroy');
         Route::get('/backup', [BackupController::class, 'export'])->name('backup.export');
+        Route::get('/notifications', [AppNotificationController::class, 'list'])->name('notifications.list');
+        Route::post('/notifications/mark-all-read', [AppNotificationController::class, 'markAllRead'])->name('notifications.markAllRead');
+        Route::get('/notifications/mark-all-read', [AppNotificationController::class, 'markAllRead']);
+        Route::post('/notifications/{id}/mark-read', [AppNotificationController::class, 'markRead'])->name('notifications.markRead');
+        Route::get('/notifications/{id}/mark-read', [AppNotificationController::class, 'markRead']);
+        Route::get('/admin/notifications', [AppNotificationController::class, 'index'])->name('admin.notifications.index');
+        Route::get('/admin/notifications/create', [AppNotificationController::class, 'create'])->name('admin.notifications.create');
+        Route::post('/admin/notifications', [AppNotificationController::class, 'store'])->name('admin.notifications.store');
+        Route::delete('/admin/notifications/{id}', [AppNotificationController::class, 'destroy'])->name('admin.notifications.destroy');
 
     Route::resource('/maintenance', MaintenanceController::class);
     Route::get('/maintenance/{maintenance}/showRepaired', [MaintenanceController::class, 'showRepaired'])->name('maintenance.showRepaired');

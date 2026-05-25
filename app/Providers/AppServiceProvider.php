@@ -13,9 +13,12 @@ use App\Policies\InvoicePolicy;
 use App\Policies\InstallmentsPolicy;
 use App\Policies\ProfilePolicy;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
+use App\Models\AppNotification;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +35,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+            // set default locale to Arabic for validation/messages
+            app()->setLocale('ar');
          Paginator::useBootstrap();
 
         RateLimiter::for('api', function (Request $request) {
@@ -40,12 +45,12 @@ class AppServiceProvider extends ServiceProvider
         );
         });
 
-        
+
         Gate::define('create-category',[CategoryPolicy::class,'store']);
         Gate::define('update-category',[CategoryPolicy::class,'update']);
         Gate::define('delete-category',[CategoryPolicy::class,'destroy']);
         Gate::define('view-category',[CategoryPolicy::class,'view']);
-        
+
         Gate::define('create-customers',[CustomersPolicy::class,'store']);
         Gate::define('update-customers',[CustomersPolicy::class,'update']);
         Gate::define('delete-customers',[CustomersPolicy::class,'destroy']);
@@ -80,5 +85,24 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('update-profile',[ProfilePolicy::class,'update']);
         Gate::define('delete-profile',[ProfilePolicy::class,'destroy']);
         Gate::define('view-profile',[ProfilePolicy::class,'view']);
+
+        View::composer('components.nav', function ($view) {
+            if (! Auth::check()) {
+                $view->with('appNotifications', collect());
+                return;
+            }
+
+            $user = Auth::user();
+            $notifications = AppNotification::active()->latest()->get();
+            $reads = \App\Models\NotificationRead::where('user_id', $user->id)->pluck('app_notification_id')->toArray();
+
+            // annotate notifications with is_read for the current user
+            $notifications->transform(function ($n) use ($reads) {
+                $n->is_read = in_array($n->id, $reads);
+                return $n;
+            });
+
+            $view->with('appNotifications', $notifications);
+        });
     }
 }

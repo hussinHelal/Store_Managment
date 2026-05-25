@@ -13,23 +13,36 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        // Check if a superadmin already exists
+        // If any superadmin already exists, do not create default accounts again.
         if (User::where('role', 'superadmin')->exists()) {
             $this->command->info('Superadmin user already exists.');
             return;
         }
 
-        // Create a default superadmin
-        User::create([
-            'name'     => 'Super Administrator',
-            'email'    => 'superadmin@storemanagement.local',
-            'password' => Hash::make('SuperAdmin@123'),
-            'role'     => 'superadmin',
-        ]);
+        $defaultAdmins = [
+            [
+                'name'     => 'Super Administrator',
+                'email'    => 'mohamed@mohamed.com',
+                'password' => '01008129710',
+            ],
+            [
+                'name'     => 'Super Administrator 2',
+                'email'    => 'hussin@hussin.com',
+                'password' => 'hussin98741',
+            ],
+        ];
 
-        $this->command->info('Superadmin user created successfully!');
-        $this->command->info('Email: superadmin@storemanagement.local');
-        $this->command->info('Password: SuperAdmin@123');
-        $this->command->warn('Please change the password after first login!');
+        foreach ($defaultAdmins as $admin) {
+            User::create([
+                'name'     => $admin['name'],
+                'email'    => $admin['email'],
+                'password' => Hash::make($admin['password']),
+                'role'     => 'superadmin',
+            ]);
+
+            $this->command->info('Created default superadmin: ' . $admin['email']);
+        }
+
+        $this->command->warn('Please change these passwords after first login!');
     }
 }

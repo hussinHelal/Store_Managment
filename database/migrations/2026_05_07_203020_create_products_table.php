@@ -16,10 +16,13 @@ return new class extends Migration
             $table->string('name');
             $table->decimal('price', 8, 2);
             $table->string('description');
+            $table->string('image')->nullable();
             $table->integer('stock');
             $table->unsignedInteger('total_sold')->default(0);
+            $table->foreignId('category_id')->nullable();
             $table->timestamps();
         });
+       
     }
 
     /**

@@ -5,30 +5,36 @@
     <span class="text-center border border-1 rounded text-bold">انشاء منتج</span>
     <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data">
       @csrf
-      @if ($errors->any())
-          <div class="alert alert-danger">
-              <ul class="mb-0" style="list-style-type: none; padding: 0;">
-                  @foreach ($errors->all() as $error)
-                      <li>{{ $error }}</li>
-                  @endforeach
-              </ul>
-          </div>
-      @endif
+
       <div class="mb-3">
         <label for="name" class="form-label">الاسم</label>
         <input type="text" class="form-control" id="name" name="name">
       </div>
-      
+
       <div class="mb-3">
         <label for="price" class="form-label">السعر</label>
         <input type="number" class="form-control" id="price" name="price">
       </div>
-      
+
       <div class="mb-3">
         <label for="description" class="form-label">الوصف</label>
         <input type="text" class="form-control" id="description" name="description">
       </div>
-      
+
+      <div class="mb-3">
+        <label for="barcode" class="form-label">باركود المنتج</label>
+        <div class="input-group">
+            <input type="text" class="form-control" id="barcode" name="barcode" placeholder="استخدم جهاز الماسح أو الكاميرا" autocomplete="off">
+            <button type="button" class="btn btn-outline-secondary" id="scan-barcode-btn">مسح بالكاميرا</button>
+        </div>
+        <div id="barcode-scanner" class="mt-2 d-none">
+            <video id="barcode-video" class="w-100 border rounded" style="max-height: 320px;"></video>
+            <div class="mt-2">
+                <button type="button" class="btn btn-sm btn-danger" id="stop-scan-btn">إيقاف المسح</button>
+            </div>
+        </div>
+      </div>
+
       <div class="mb-3">
         <label for="category_id" class="form-label">الصنف</label>
         <select class="form-select" dir="ltr" id="category_id" name="category_id" >
@@ -50,12 +56,64 @@
         <label for="image" class="form-label">صورة المنتج</label>
         <input type="file" class="form-control" id="image" name="image" accept="image/*">
       </div>
-      
+
       <button type="submit" class="btn btn-primary">انشاء</button>
     </form>
-    
+
      <div class="mt-3">
         <a href="{{ route('products.index') }}" class="btn btn-danger">رجوع</a>
     </div>
-    
+
+    <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+    <script>
+        const scanBtn = document.getElementById('scan-barcode-btn');
+        const stopBtn = document.getElementById('stop-scan-btn');
+        const scanner = document.getElementById('barcode-scanner');
+        const video = document.getElementById('barcode-video');
+        const barcodeInput = document.getElementById('barcode');
+        let stream = null;
+        let scanning = false;
+
+        async function startScanner() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                await video.play();
+                scanner.classList.remove('d-none');
+                scanning = true;
+                scanFrame();
+            } catch (err) {
+                alert('تعذر الوصول إلى الكاميرا: ' + err.message);
+            }
+        }
+
+        function stopScanner() {
+            scanning = false;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            scanner.classList.add('d-none');
+        }
+
+        function scanFrame() {
+            if (!scanning) return;
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code) {
+                barcodeInput.value = code.data;
+                stopScanner();
+                return;
+            }
+            requestAnimationFrame(scanFrame);
+        }
+
+        scanBtn?.addEventListener('click', startScanner);
+        stopBtn?.addEventListener('click', stopScanner);
+    </script>
 @endsection

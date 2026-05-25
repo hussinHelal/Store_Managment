@@ -13,10 +13,12 @@ return new class extends Migration
     {
         Schema::create('installments', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('invoice_id')->nullable()->after('id');
             $table->string('customer')->default('مجهول');
             $table->foreignId('product_id')->nullable()->constrained('products')->after('customer');
             $table->string('product_name');
             $table->integer('product_price');
+            $table->text('items')->nullable();
             $table->date('payment_date')->nullable();
             $table->date('next_payment_date')->nullable();
             $table->integer('paid_amount')->default(0);
