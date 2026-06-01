@@ -14,12 +14,19 @@ class BackupController extends Controller
 {
     public function export(Request $request)
     {
-        if (!$request->user() || !$request->user()->isSuperAdmin()) {
-            abort(403);
+        // Allow both admin and superadmin users
+        $isAuthorized = $request->user() && ($request->user()->isSuperAdmin() || $request->user()->isAdmin());
+
+        if (!$isAuthorized) {
+            if ($request->expectsJson() || $request->ajax() || str_contains($request->header('Accept', ''), 'application/json')) {
+                return response()->json(['error' => 'ليس لديك صلاحية تنزيل النسخة الاحتياطية.'], 403);
+            }
+
+            return redirect()->route('home')->with('error', 'ليس لديك صلاحية تنزيل النسخة الاحتياطية.');
         }
 
-        $files = [
-            'products.csv' => $this->buildCsv(products::with('category')->get()->map(fn($product) => [
+        try {
+            $productsArr = products::with('category')->get()->map(fn($product) => [
                 'id' => $product->id,
                 'name' => $product->name,
                 'price' => $product->price,
@@ -30,8 +37,9 @@ class BackupController extends Controller
                 'image' => $product->image,
                 'created_at' => $product->created_at,
                 'updated_at' => $product->updated_at,
-            ])->toArray()),
-            'invoices.csv' => $this->buildCsv(invoice::with('product')->get()->map(fn($invoice) => [
+            ])->toArray();
+
+            $invoicesArr = invoice::with('product')->get()->map(fn($invoice) => [
                 'id' => $invoice->id,
                 'invoice_number' => $invoice->invoice_number,
                 'customer' => $invoice->customer,
@@ -45,8 +53,9 @@ class BackupController extends Controller
                 'invoice_date' => $invoice->invoice_date,
                 'created_at' => $invoice->created_at,
                 'updated_at' => $invoice->updated_at,
-            ])->toArray()),
-            'installments.csv' => $this->buildCsv(installments::with('product')->get()->map(fn($installment) => [
+            ])->toArray();
+
+            $installmentsArr = installments::with('product')->get()->map(fn($installment) => [
                 'id' => $installment->id,
                 'customer' => $installment->customer,
                 'product_id' => $installment->product_id,
@@ -60,16 +69,18 @@ class BackupController extends Controller
                 'next_payment_date' => $installment->next_payment_date,
                 'created_at' => $installment->created_at,
                 'updated_at' => $installment->updated_at,
-            ])->toArray()),
-            'customers.csv' => $this->buildCsv(customers::all()->map(fn($customer) => [
+            ])->toArray();
+
+            $customersArr = customers::all()->map(fn($customer) => [
                 'id' => $customer->id,
                 'name' => $customer->name,
                 'phone' => $customer->phone,
                 'address' => $customer->address,
                 'created_at' => $customer->created_at,
                 'updated_at' => $customer->updated_at,
-            ])->toArray()),
-            'maintenance.csv' => $this->buildCsv(Maintenance::all()->map(fn($maintenance) => [
+            ])->toArray();
+
+            $maintenanceArr = Maintenance::all()->map(fn($maintenance) => [
                 'id' => $maintenance->id,
                 'name' => $maintenance->name,
                 'owner' => $maintenance->owner,
@@ -81,13 +92,116 @@ class BackupController extends Controller
                 'completed_date' => $maintenance->completed_date,
                 'created_at' => $maintenance->created_at,
                 'updated_at' => $maintenance->updated_at,
-            ])->toArray()),
-        ];
+            ])->toArray();
 
-        $filename = 'backup-' . now()->format('YmdHis');
-        $tempFile = $this->createArchive($files, $filename);
+            $files = [
+                'products.csv' => $this->buildCsv($productsArr),
+                'invoices.csv' => $this->buildCsv($invoicesArr),
+                'installments.csv' => $this->buildCsv($installmentsArr),
+                'customers.csv' => $this->buildCsv($customersArr),
+                'maintenance.csv' => $this->buildCsv($maintenanceArr),
+            ];
+        } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'فشل جمع البيانات: ' . $e->getMessage()], 500);
+            }
 
-        return response()->download($tempFile, basename($tempFile))->deleteFileAfterSend(true);
+            abort(500, 'فشل جمع البيانات: ' . $e->getMessage());
+        }
+
+        $format = $request->query('format', 'zip');
+        $filenameBase = 'backup-' . now()->format('YmdHis');
+
+        try {
+            if ($format === 'pdf') {
+                if (!class_exists(\Dompdf\Dompdf::class)) {
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->json(['error' => 'توليد PDF يتطلب تثبيت الحزمة dompdf/dompdf.'], 501);
+                    }
+                    return redirect()->back()->with('error', 'توليد PDF يتطلب تثبيت الحزمة dompdf/dompdf.');
+                }
+
+                // Build a simple HTML representation of datasets
+                $html = '<h1>Backup export - ' . e(now()->toDateTimeString()) . '</h1>';
+                $datasets = ['Products' => $productsArr, 'Invoices' => $invoicesArr, 'Installments' => $installmentsArr, 'Customers' => $customersArr, 'Maintenance' => $maintenanceArr];
+                foreach ($datasets as $title => $rows) {
+                    $html .= "<h2>{$title}</h2>";
+                    if (empty($rows)) { $html .= '<p>(لا توجد سجلات)</p>'; continue; }
+                    $html .= '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse; width:100%">';
+                    $html .= '<thead><tr>';
+                    foreach (array_keys($rows[0]) as $col) { $html .= '<th>' . e($col) . '</th>'; }
+                    $html .= '</tr></thead><tbody>';
+                    foreach ($rows as $row) {
+                        $html .= '<tr>';
+                        foreach ($row as $cell) { $html .= '<td>' . e(is_array($cell) ? json_encode($cell, JSON_UNESCAPED_UNICODE) : (string)$cell) . '</td>'; }
+                        $html .= '</tr>';
+                    }
+                    $html .= '</tbody></table><br/>';
+                }
+
+                $dompdf = new \Dompdf\Dompdf();
+                $dompdf->loadHtml($html);
+                $dompdf->setPaper('A4', 'landscape');
+                $dompdf->render();
+                $pdfContent = $dompdf->output();
+                $tempFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $filenameBase . '.pdf';
+                file_put_contents($tempFile, $pdfContent);
+                return response()->download($tempFile, basename($tempFile))->deleteFileAfterSend(true);
+            }
+
+            if ($format === 'xlsx' || $format === 'excel') {
+                if (class_exists('PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
+                    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+                    $sheetIndex = 0;
+                    $sets = ['Products' => $productsArr, 'Invoices' => $invoicesArr, 'Installments' => $installmentsArr, 'Customers' => $customersArr, 'Maintenance' => $maintenanceArr];
+                    foreach ($sets as $title => $rows) {
+                        if ($sheetIndex > 0) {
+                            $spreadsheet->createSheet();
+                        }
+                        $sheet = $spreadsheet->setActiveSheetIndex($sheetIndex);
+                        $sheet->setTitle(substr($title, 0, 31));
+                        if (!empty($rows)) {
+                            $cols = array_keys($rows[0]);
+                            $colIndex = 1;
+                            foreach ($cols as $c) {
+                                $sheet->setCellValueByColumnAndRow($colIndex++, 1, $c);
+                            }
+                            $rowIndex = 2;
+                            foreach ($rows as $row) {
+                                $colIndex = 1;
+                                foreach ($row as $cell) {
+                                    $sheet->setCellValueByColumnAndRow($colIndex++, $rowIndex, is_array($cell) ? json_encode($cell, JSON_UNESCAPED_UNICODE) : $cell);
+                                }
+                                $rowIndex++;
+                            }
+                        }
+                        $sheetIndex++;
+                    }
+
+                    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+                    $tempFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $filenameBase . '.xlsx';
+                    $writer->save($tempFile);
+                    return response()->download($tempFile, basename($tempFile))->deleteFileAfterSend(true);
+                }
+
+                // fallback to zip of CSVs
+                $filenameWithoutExt = $filenameBase . '-csv';
+                $tempFile = $this->createArchive($files, $filenameWithoutExt);
+                return response()->download($tempFile, basename($tempFile))->deleteFileAfterSend(true);
+            }
+
+            // default: zip of CSVs
+            $filenameWithoutExt = $filenameBase;
+            $tempFile = $this->createArchive($files, $filenameWithoutExt);
+            return response()->download($tempFile, basename($tempFile))->deleteFileAfterSend(true);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $he) {
+            throw $he;
+        } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['error' => 'فشل أثناء إنشاء النسخة الاحتياطية: ' . $e->getMessage()], 500);
+            }
+            abort(500, 'فشل أثناء إنشاء النسخة الاحتياطية: ' . $e->getMessage());
+        }
     }
 
     private function createArchive(array $files, string $filename): string

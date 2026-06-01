@@ -19,30 +19,8 @@ class SuperAdminSeeder extends Seeder
             return;
         }
 
-        $defaultAdmins = [
-            [
-                'name'     => 'Super Administrator',
-                'email'    => 'mohamed@mohamed.com',
-                'password' => '01008129710',
-            ],
-            [
-                'name'     => 'Super Administrator 2',
-                'email'    => 'hussin@hussin.com',
-                'password' => 'hussin98741',
-            ],
-        ];
-
-        foreach ($defaultAdmins as $admin) {
-            User::create([
-                'name'     => $admin['name'],
-                'email'    => $admin['email'],
-                'password' => Hash::make($admin['password']),
-                'role'     => 'superadmin',
-            ]);
-
-            $this->command->info('Created default superadmin: ' . $admin['email']);
-        }
-
-        $this->command->warn('Please change these passwords after first login!');
+        // No default superadmin accounts are created.
+        // Client should create their own admin account through the registration process.
+        $this->command->info('No default superadmin accounts created. Please register your first admin user.');
     }
 }

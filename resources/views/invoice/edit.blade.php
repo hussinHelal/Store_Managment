@@ -81,7 +81,7 @@
 
     @push('scripts')
     <script>
-      const allProducts = @json($products->map(fn($product) => ['id' => $product->id, 'name' => $product->name, 'price' => $product->price, 'barcode' => $product->barcode]));
+      const allProducts = @json($allProducts ?? []);
       const invoiceItemsContainer = document.getElementById('invoice-items-container');
       const barcodeInput = document.getElementById('barcode');
       const totalQuantityInput = document.getElementById('total_quantity');
@@ -194,7 +194,7 @@
                 updateInvoiceTotals();
                 barcodeInput.value = '';
               } else {
-                alert('لم يتم العثور على منتج لهذا الباركود');
+                window.showBootstrapAlert('لم يتم العثور على منتج لهذا الباركود', 'warning');
               }
             }
           });

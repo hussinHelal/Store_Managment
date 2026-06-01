@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ config('app.name','Bebo') }} @yield('title')</title>
+    <title>{{ config('app.name') }} @yield('title')</title>
     <script>
            (() => {
                const savedTheme = localStorage.getItem('theme');

@@ -26,7 +26,16 @@ class InvoiceController extends Controller
     public function create()
     {
         $products = products::all();
-        return view('invoice.create', ['products' => $products]);
+        $allProducts = $products->map(function($p) {
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'price' => $p->price,
+                'barcode' => $p->barcode,
+            ];
+        })->toArray();
+
+        return view('invoice.create', ['products' => $products, 'allProducts' => $allProducts]);
     }
 
     /**
@@ -140,7 +149,16 @@ class InvoiceController extends Controller
     public function edit(invoice $invoice)
     {
         $products = products::all();
-        return view('invoice.edit', ['invoice' => $invoice, 'products' => $products]);
+        $allProducts = $products->map(function($p) {
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'price' => $p->price,
+                'barcode' => $p->barcode,
+            ];
+        })->toArray();
+
+        return view('invoice.edit', ['invoice' => $invoice, 'products' => $products, 'allProducts' => $allProducts]);
     }
 
     /**

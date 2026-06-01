@@ -27,3 +27,6 @@
         @endif
     </div>
 @endif
+
+{{-- container for dynamic alerts injected by JS --}}
+<div id="dynamic-alerts" class="mb-4"></div>

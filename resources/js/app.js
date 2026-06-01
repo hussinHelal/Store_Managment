@@ -1,23 +1,22 @@
 import * as bootstrap from 'bootstrap';
+window.bootstrap = bootstrap;
 import Chart from 'chart.js/auto';
+import "@fortawesome/fontawesome-free/js/all.js";
 
 import jQuery from 'jquery';
 window.$ = window.jQuery = jQuery;
 window.Chart = Chart;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Enable tooltips
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    const tooltips = [...tooltipTriggerList].map(tooltipTriggerEl =>
-        new bootstrap.Tooltip(tooltipTriggerEl)
-    );
+    [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 });
 
 $(function () {
-
     const themeToggle = $('#theme-toggle');
     const themeIcon = $('#theme-icon');
     const themeLabel = $('.theme-label');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     function setTheme(theme) {
         document.documentElement.setAttribute('data-bs-theme', theme);
@@ -37,8 +36,7 @@ $(function () {
         }
     }
 
-    let currentTheme = localStorage.getItem('theme') || document.documentElement.getAttribute('data-bs-theme') || 'light';
-
+    let currentTheme = localStorage.getItem('theme') || (prefersDark ? 'dark' : 'light');
     setTheme(currentTheme);
 
     if (themeToggle.length) {
@@ -47,5 +45,4 @@ $(function () {
             setTheme(currentTheme);
         });
     }
-
 });

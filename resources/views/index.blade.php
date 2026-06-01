@@ -8,18 +8,20 @@
             <p class="text-muted small mb-0">نظرة عامة على أداء المتجر والروابط الأكثر استخدامًا.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ route('backup.export') }}" class="btn btn-success btn-round" title="تحميل نسخة احتياطية من البيانات">
+            <button id="backupBtn" type="button" class="btn btn-success btn-round" title="تحميل نسخة احتياطية من البيانات" data-format="zip">
                 <i class="fas fa-download me-2"></i> تحميل نسخة احتياطية
-            </a>
+            </button>
             <a href="{{ route('invoices.index') }}" class="btn btn-outline-primary btn-round">
                 <i class="fas fa-file-invoice me-2"></i> عرض الفواتير
             </a>
         </div>
     </div>
 
+
+
     <div class="row g-3 mb-4">
         @foreach($cards as $card)
-            <div class="col-12 col-sm-6 col-xl-3 shadow">
+            <div class="col-12 col-sm-6 col-xl-3 ">
                 <div class="card dashboard-card h-100 border-0 shadow-sm position-relative overflow-hidden" style="border-top: 4px solid {{ $card['color'] }};">
                     <div class="card-body py-4 px-3">
                         <div class="d-flex align-items-center justify-content-between mb-3">
@@ -46,7 +48,7 @@
     </div>
 
     <div class="row g-3">
-        <div class="col-12 col-xl-8">
+        <div class="col-12 col-xl-8 ">
             <div class="card chart-card h-100 border-0 shadow-sm">
                 <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
                     <div>
@@ -63,8 +65,9 @@
             </div>
         </div>
 
-        <div class="col-12 col-xl-4">
-            <div class="card h-100 border-0 shadow-sm">
+
+        <div class="col-12 col-xl-4 shadow-sm">
+            <div class="card h-100 border-0 ">
                 <div class="card-header bg-white border-0 pb-3">
                     <h5 class="mb-0">الوصول السريع</h5>
                 </div>
@@ -131,6 +134,54 @@
             }
         });
     });
+</script>
+
+<script>
+    (function () {
+        const btn = document.getElementById('backupBtn');
+        if (!btn) return;
+        btn.addEventListener('click', async function () {
+            const format = btn.getAttribute('data-format') || 'zip';
+            const url = `{{ route('backup.export') }}?format=${format}`;
+            try {
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) {
+                    const ct = res.headers.get('content-type') || '';
+                    if (ct.includes('application/json')) {
+                        const j = await res.json();
+                        window.showBootstrapAlert(j.error || j.message || 'حدث خطأ', 'danger');
+                    } else {
+                        window.showBootstrapAlert('Server error: ' + res.status, 'danger');
+                    }
+                    return;
+                }
+
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const j = await res.json();
+                    window.showBootstrapAlert(j.error || j.message || 'حدث خطأ', 'danger');
+                    return;
+                }
+
+                const blob = await res.blob();
+                const cd = res.headers.get('content-disposition') || '';
+                let filename = 'backup';
+                const m = cd.match(/filename\*=UTF-8''(.+)|filename=\"?([^\";]+)\"?/);
+                if (m) {
+                    filename = decodeURIComponent(m[1] || m[2]);
+                }
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(a.href);
+            } catch (err) {
+                window.showBootstrapAlert('خطأ أثناء تنزيل النسخة الاحتياطية: ' + err.message, 'danger');
+            }
+        });
+    })();
 </script>
 
 <style>

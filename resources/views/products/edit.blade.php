@@ -93,7 +93,7 @@
                 scanning = true;
                 scanFrame();
             } catch (err) {
-                alert('تعذر الوصول إلى الكاميرا: ' + err.message);
+                window.showBootstrapAlert('تعذر الوصول إلى الكاميرا: ' + err.message, 'danger');
             }
         }
 

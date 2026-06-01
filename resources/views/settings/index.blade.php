@@ -23,9 +23,9 @@
                                 <i class="fas fa-database me-2" style="color: #667eea;"></i> النسخ الاحتياطية
                             </h5>
                             <p class="text-muted mb-3">قم بتنزيل نسخة احتياطية من جميع بيانات التطبيق</p>
-                            <a href="{{ route('backup.export') }}" class="btn btn-primary w-100">
+                            <button id="backupBtn" type="button" class="btn btn-primary w-100" data-format="zip">
                                 <i class="fas fa-download me-2"></i> تحميل نسخة احتياطية
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -49,3 +49,53 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        const btn = document.getElementById('backupBtn');
+        if (!btn) return;
+        btn.addEventListener('click', async function () {
+            const format = btn.getAttribute('data-format') || 'zip';
+            const url = `{{ route('backup.export') }}?format=${format}`;
+            try {
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) {
+                    const ct = res.headers.get('content-type') || '';
+                    if (ct.includes('application/json')) {
+                        const j = await res.json();
+                        window.showBootstrapAlert(j.error || j.message || 'حدث خطأ', 'danger');
+                    } else {
+                        window.showBootstrapAlert('Server error: ' + res.status, 'danger');
+                    }
+                    return;
+                }
+
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    const j = await res.json();
+                    window.showBootstrapAlert(j.error || j.message || 'حدث خطأ', 'danger');
+                    return;
+                }
+
+                const blob = await res.blob();
+                const cd = res.headers.get('content-disposition') || '';
+                let filename = 'backup';
+                const m = cd.match(/filename\*=UTF-8''(.+)|filename=\"?([^\";]+)\"?/);
+                if (m) {
+                    filename = decodeURIComponent(m[1] || m[2]);
+                }
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(a.href);
+            } catch (err) {
+                window.showBootstrapAlert('خطأ أثناء تنزيل النسخة الاحتياطية: ' + err.message, 'danger');
+            }
+        });
+    })();
+</script>
+@endpush

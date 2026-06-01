@@ -28,7 +28,15 @@ class InstallmentsController extends Controller
     public function create()
     {
         $products = products::all();
-        return view('installments.create', ['products' => $products]);
+        $installmentProducts = $products->map(function($p) {
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'price' => $p->price,
+            ];
+        })->toArray();
+
+        return view('installments.create', ['products' => $products, 'installmentProducts' => $installmentProducts]);
     }
 
     /**
@@ -118,7 +126,15 @@ class InstallmentsController extends Controller
     public function edit(installments $installment)
     {
         $products = products::all();
-        return view('installments.edit', ['installment' => $installment, 'products' => $products]);
+        $installmentProducts = $products->map(function($p) {
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'price' => $p->price,
+            ];
+        })->toArray();
+
+        return view('installments.edit', ['installment' => $installment, 'products' => $products, 'installmentProducts' => $installmentProducts]);
     }
 
     /**

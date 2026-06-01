@@ -78,7 +78,7 @@
 
     @push('scripts')
     <script>
-      const installmentProducts = @json($products->map(fn($product) => ['id' => $product->id, 'name' => $product->name, 'price' => $product->price]));
+      const installmentProducts = @json($installmentProducts ?? []);
       const installmentItemsContainer = document.getElementById('installment-items-container');
       const totalQuantityInput = document.getElementById('total_quantity');
       const totalPriceInput = document.getElementById('product_price');
