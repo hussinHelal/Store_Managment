@@ -17,7 +17,7 @@ class MaintenanceController extends Controller
                 $query->where('name', 'like', $search);
             })
             ->orderBy('id', 'desc')
-            ->paginate(15)
+            ->paginate(20)
             ->withQueryString();
 
         return view('Maintenance.index', compact('maintenances'));

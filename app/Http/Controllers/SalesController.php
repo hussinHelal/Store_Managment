@@ -24,7 +24,7 @@ class SalesController extends Controller
             ->selectRaw('SUM(invoices.quantity) as sold_quantity')
             ->groupBy('products.id', 'products.name')
             ->orderByDesc('sold_quantity')
-            ->paginate(15)
+            ->paginate(20)
             ->withQueryString();
 
         return view('sales.index', ['soldProducts' => $soldProducts]);

@@ -5,7 +5,7 @@
 <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
     <div>
         <h1>المنتجات المباعة</h1>
-        @include('components.search-bar', ['placeholder' => 'ابحث باسم المنتج'])
+        @include('components.search-bar', ['placeholder' => 'اسم المنتج'])
     </div>
 </div>
 

@@ -5,7 +5,7 @@
 <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
     <div>
         <h1>الأصناف</h1>
-        @include('components.search-bar', ['placeholder' => 'ابحث باسم الصنف'])
+        @include('components.search-bar', ['placeholder' => 'اسم الصنف'])
     </div>
     <a href="{{ route('categories.create') }}" class="btn btn-primary btn-round">
         <i class="fas fa-plus me-1"></i> صنف جديد

@@ -23,7 +23,7 @@ class ProductsController extends Controller
                 });
             })
             ->orderBy('id', 'desc')
-            ->paginate(15)
+            ->paginate(20)
             ->withQueryString();
 
         $categories = category::all();

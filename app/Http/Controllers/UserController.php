@@ -11,20 +11,20 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $this->authorize('view-user');
-        
+
         // Only superadmin can view all users
         if (!$request->user()->isSuperAdmin()) {
             abort(403, 'Only superadmin can view users.');
         }
 
-        $users = User::paginate(15);
+        $users = User::paginate(20);
         return view('users.index', ['users' => $users]);
     }
 
     public function create(Request $request)
     {
         $this->authorize('create-user');
-        
+
         // Only superadmin can create users
         if (!$request->user()->isSuperAdmin()) {
             abort(403, 'Only superadmin can create new users.');
@@ -36,7 +36,7 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $this->authorize('create-user');
-        
+
         // Only superadmin can create users
         if (!$request->user()->isSuperAdmin()) {
             abort(403, 'Only superadmin can create new users.');
@@ -62,7 +62,7 @@ class UserController extends Controller
     public function edit(User $user, Request $request)
     {
         $this->authorize('update-user');
-        
+
         // Only superadmin can modify user roles
         if (!$request->user()->isSuperAdmin()) {
             abort(403, 'Only superadmin can modify user roles.');
@@ -77,7 +77,7 @@ class UserController extends Controller
     public function update(User $user, Request $request)
     {
         $this->authorize('update-user');
-        
+
         // Only superadmin can modify user roles
         if (!$request->user()->isSuperAdmin()) {
             abort(403, 'Only superadmin can modify user roles.');
@@ -97,7 +97,7 @@ class UserController extends Controller
     public function destroy(User $user, Request $request)
     {
         $this->authorize('delete-user');
-        
+
         // Only superadmin can delete users
         if (!$request->user()->isSuperAdmin()) {
             abort(403, 'Only superadmin can delete users.');

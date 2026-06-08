@@ -2,10 +2,10 @@
 @section('title', '- الفواتير')
 @section('content')
 
-<div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
-    <div>
+<div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 " >
+    <div >
         <h1>الفواتير</h1>
-        @include('components.search-bar', ['placeholder' => 'ابحث باسم العميل أو رقم الفاتورة'])
+        @include('components.search-bar', ['placeholder' => 'اسم العميل أو رقم الفاتورة'])
     </div>
     <a href="{{ route('invoices.create') }}" class="btn btn-primary btn-round">
         <i class="fas fa-plus me-1"></i> فاتورة جديدة

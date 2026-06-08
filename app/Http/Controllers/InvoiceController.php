@@ -25,7 +25,7 @@ class InvoiceController extends Controller
                 });
             })
             ->orderBy('id', 'desc')
-            ->paginate(15)
+            ->paginate(20)
             ->withQueryString();
 
         return view('invoice.index', ['invoices' => $invoices]);

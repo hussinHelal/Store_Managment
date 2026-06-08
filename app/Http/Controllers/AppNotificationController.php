@@ -76,7 +76,7 @@ class AppNotificationController extends Controller
             abort(403);
         }
 
-        $notifications = AppNotification::latest()->paginate(15);
+        $notifications = AppNotification::latest()->paginate(20);
         return view('notifications.index', compact('notifications'));
     }
 

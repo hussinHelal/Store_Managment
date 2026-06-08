@@ -5,7 +5,7 @@
 <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
     <div>
         <h1>المنتجات</h1>
-        @include('components.search-bar', ['placeholder' => 'ابحث باسم المنتج أو الباركود'])
+        @include('components.search-bar', ['placeholder' => ' اسم المنتج أو الباركود'])
     </div>
     <a href="{{ route('products.create') }}" class="btn btn-primary btn-round">
         <i class="fas fa-plus me-1"></i> منتج جديد

@@ -5,7 +5,7 @@
 <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
     <div>
         <h1>العملاء</h1>
-        @include('components.search-bar', ['placeholder' => 'ابحث باسم العميل'])
+        @include('components.search-bar', ['placeholder' => 'اسم العميل'])
     </div>
     <a href="{{ route('customers.create') }}" class="btn btn-primary btn-round">
         <i class="fas fa-plus me-1"></i> عميل جديد

@@ -18,7 +18,7 @@ class CustomersController extends Controller
                 $query->where('name', 'like', $search);
             })
             ->orderBy('id', 'desc')
-            ->paginate(15)
+            ->paginate(20)
             ->withQueryString();
 
         return view('customers.index', ['customers' => $customers]);

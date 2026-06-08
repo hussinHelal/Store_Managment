@@ -26,7 +26,7 @@ class InstallmentsController extends Controller
                 });
             })
             ->orderBy('id', 'desc')
-            ->paginate(15)
+            ->paginate(20)
             ->withQueryString();
 
         $products = products::all();
