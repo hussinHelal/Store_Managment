@@ -15,9 +15,20 @@ class InstallmentsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $installments = Installments::with('product')->orderBy('id', 'desc')->paginate(15);
+        $installments = Installments::with('product')
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = '%' . $request->input('search') . '%';
+                $query->where(function ($query) use ($search) {
+                    $query->where('customer', 'like', $search)
+                          ->orWhere('product_name', 'like', $search);
+                });
+            })
+            ->orderBy('id', 'desc')
+            ->paginate(15)
+            ->withQueryString();
+
         $products = products::all();
         return view('installments.index', ['installments' => $installments, 'products' => $products]);
     }

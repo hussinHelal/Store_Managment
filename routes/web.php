@@ -70,6 +70,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     ->name('products.update');
         Route::delete('/products/{product}', [ProductsController::class, 'destroy'])->can('delete-products')
     ->name('products.destroy');
+        Route::get('/products/{product}/print-label', [ProductsController::class, 'printLabel'])->name('products.printLabel');
 
     Route::resource('/invoices', InvoiceController::class)->except(['store', 'update', 'destroy']);
         Route::post('/invoices', [InvoiceController::class, 'store'])->can('create-invoice')

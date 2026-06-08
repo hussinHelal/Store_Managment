@@ -30,7 +30,8 @@
     </div>
 
     <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+        <input type="hidden" name="is_active" value="0">
+        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', 1) ? 'checked' : '' }}>
         <label class="form-check-label" for="is_active">مفعل</label>
     </div>
 

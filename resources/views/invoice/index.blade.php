@@ -2,11 +2,27 @@
 @section('title', '- الفواتير')
 @section('content')
 
-<div class="page-header">
-    <h1>الفواتير</h1>
+<div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+    <div>
+        <h1>الفواتير</h1>
+        @include('components.search-bar', ['placeholder' => 'ابحث باسم العميل أو رقم الفاتورة'])
+    </div>
     <a href="{{ route('invoices.create') }}" class="btn btn-primary btn-round">
         <i class="fas fa-plus me-1"></i> فاتورة جديدة
     </a>
+</div>
+
+<div class="row gx-3 gy-3 mb-4">
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="card border-0 shadow-sm bg-body p-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <p class="text-muted small mb-0">إجمالي الفواتير</p>
+                <span class="badge bg-primary bg-opacity-10 text-primary">الصفحة الحالية</span>
+            </div>
+            <h2 class="fw-bold mb-1">{{ $invoices->total() }}</h2>
+            <p class="text-secondary mb-0">عرض {{ $invoices->count() }} من أصل {{ $invoices->total() }} فاتورة.</p>
+        </div>
+    </div>
 </div>
 
 <div class="table-wrapper table-responsive">

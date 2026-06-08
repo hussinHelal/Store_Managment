@@ -12,11 +12,27 @@ class ProductsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $products = products::with('category')->orderBy('id', 'desc')->paginate(15);
+        $products = products::with('category')
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = '%' . $request->input('search') . '%';
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', $search)
+                          ->orWhere('barcode', 'like', $search);
+                });
+            })
+            ->orderBy('id', 'desc')
+            ->paginate(15)
+            ->withQueryString();
+
         $categories = category::all();
         return view('products.index', compact('products', 'categories'));
+    }
+
+    public function printLabel(products $product)
+    {
+        return view('products.print-label', compact('product'));
     }
 
     /**

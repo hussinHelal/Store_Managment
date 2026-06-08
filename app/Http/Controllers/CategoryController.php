@@ -10,9 +10,16 @@ class CategoryController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $categories = category::orderBy('name')->paginate(15);
+        $categories = category::when($request->filled('search'), function ($query) use ($request) {
+                $search = '%' . $request->input('search') . '%';
+                $query->where('name', 'like', $search);
+            })
+            ->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
+
         return view('category.index', ['categories' => $categories]);
     }
 

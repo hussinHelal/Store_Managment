@@ -10,9 +10,16 @@ class MaintenanceController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $maintenances = Maintenance::orderBy('id', 'desc')->paginate(15);
+        $maintenances = Maintenance::when($request->filled('search'), function ($query) use ($request) {
+                $search = '%' . $request->input('search') . '%';
+                $query->where('name', 'like', $search);
+            })
+            ->orderBy('id', 'desc')
+            ->paginate(15)
+            ->withQueryString();
+
         return view('Maintenance.index', compact('maintenances'));
     }
 

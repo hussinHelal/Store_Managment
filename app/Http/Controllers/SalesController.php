@@ -12,15 +12,20 @@ class SalesController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $soldProducts = products::select('products.id', 'products.name')
             ->join('invoices', 'products.id', '=', 'invoices.product_id')
             ->where('invoices.status', '!=', 'refunded')
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = '%' . $request->input('search') . '%';
+                $query->where('products.name', 'like', $search);
+            })
             ->selectRaw('SUM(invoices.quantity) as sold_quantity')
             ->groupBy('products.id', 'products.name')
             ->orderByDesc('sold_quantity')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('sales.index', ['soldProducts' => $soldProducts]);
     }

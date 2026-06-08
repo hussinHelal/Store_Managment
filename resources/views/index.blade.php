@@ -50,7 +50,7 @@
     <div class="row g-3">
         <div class="col-12 col-xl-8 ">
             <div class="card chart-card h-100 border-0 shadow-sm">
-                <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
+                <div class="card-header bg-body border-0 d-flex align-items-center justify-content-between">
                     <div>
                         <h5 class="mb-1">مخطط المبيعات الأسبوعية</h5>
                         <p class="text-muted small mb-0">إجمالي المبيعات لكل يوم خلال الأسبوع الماضي.</p>
@@ -67,18 +67,18 @@
 
 
         <div class="col-12 col-xl-4 shadow-sm">
-            <div class="card h-100 border-0 ">
-                <div class="card-header bg-white border-0 pb-3">
+            <div class="card h-100 border-0 bg-body shadow-sm">
+                <div class="card-header bg-body border-0 pb-3">
                     <h5 class="mb-0">الوصول السريع</h5>
                 </div>
                 <div class="card-body p-4">
                     <div class="list-group list-group-flush">
-                        <a href="{{ route('categories.index') }}" class="list-group-item list-group-item-action rounded-3 mb-2">التصنيفات</a>
-                        <a href="{{ route('products.index') }}" class="list-group-item list-group-item-action rounded-3 mb-2">المنتجات</a>
-                        <a href="{{ route('maintenance.index') }}" class="list-group-item list-group-item-action rounded-3 mb-2">الصيانة</a>
-                        <a href="{{ route('invoices.index') }}" class="list-group-item list-group-item-action rounded-3 mb-2">الفواتير</a>
-                        <a href="{{ route('customers.index') }}" class="list-group-item list-group-item-action rounded-3 mb-2">العملاء</a>
-                        <a href="{{ route('installments.index') }}" class="list-group-item list-group-item-action rounded-3">الديون</a>
+                        <a href="{{ route('categories.index') }}" class="list-group-item list-group-item-action bg-body-secondary rounded-3 mb-2">التصنيفات</a>
+                        <a href="{{ route('products.index') }}" class="list-group-item list-group-item-action bg-body-secondary rounded-3 mb-2">المنتجات</a>
+                        <a href="{{ route('maintenance.index') }}" class="list-group-item list-group-item-action bg-body-secondary rounded-3 mb-2">الصيانة</a>
+                        <a href="{{ route('invoices.index') }}" class="list-group-item list-group-item-action bg-body-secondary rounded-3 mb-2">الفواتير</a>
+                        <a href="{{ route('customers.index') }}" class="list-group-item list-group-item-action bg-body-secondary rounded-3 mb-2">العملاء</a>
+                        <a href="{{ route('installments.index') }}" class="list-group-item list-group-item-action bg-body-secondary rounded-3">الديون</a>
                     </div>
                 </div>
             </div>
@@ -91,6 +91,13 @@
         const ctx = document.getElementById('salesChart');
         if (!ctx) return;
 
+        const theme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+        const isDark = theme === 'dark';
+        const textColor = isDark ? '#e9ecef' : '#6c757d';
+        const gridColor = isDark ? 'rgba(233, 236, 239, 0.16)' : 'rgba(108, 117, 125, 0.15)';
+        const lineColor = isDark ? '#4dabf7' : '#0d6efd';
+        const fillColor = isDark ? 'rgba(77, 171, 247, 0.18)' : 'rgba(13, 110, 253, 0.18)';
+
         const salesChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -98,12 +105,12 @@
                 datasets: [{
                     label: 'المبيعات',
                     data: @json($chartData),
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.18)',
+                    borderColor: lineColor,
+                    backgroundColor: fillColor,
                     fill: true,
                     tension: 0.35,
                     pointRadius: 4,
-                    pointBackgroundColor: '#0d6efd',
+                    pointBackgroundColor: lineColor,
                     pointBorderWidth: 0,
                 }]
             },
@@ -113,17 +120,20 @@
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { color: '#6c757d' }
+                        ticks: { color: textColor }
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(108, 117, 125, 0.15)' },
-                        ticks: { color: '#6c757d' }
+                        grid: { color: gridColor },
+                        ticks: { color: textColor }
                     }
                 },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
+                        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                        titleColor: textColor,
+                        bodyColor: textColor,
                         callbacks: {
                             label: function (context) {
                                 return context.dataset.label + ': ' + context.formattedValue + ' ج.م';
@@ -188,7 +198,7 @@
     .dashboard-card {
         transition: transform 0.25s ease, box-shadow 0.25s ease;
         border-radius: 1rem;
-        background: #ffffff;
+        background: var(--bs-card-bg);
         box-shadow: 0 14px 38px rgba(15, 23, 42, 0.06);
     }
     .dashboard-card:hover {
@@ -197,7 +207,7 @@
     }
     .chart-card {
         border-radius: 1rem;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        background: linear-gradient(180deg, var(--bs-body-bg) 0%, var(--bs-body) 100%);
         box-shadow: 0 24px 55px rgba(15, 23, 42, 0.08);
     }
     .chart-card .card-header {
@@ -208,6 +218,12 @@
     }
     .btn-round {
         border-radius: 0.75rem;
+    }
+    [data-bs-theme="dark"] .chart-card {
+        box-shadow: 0 24px 55px rgba(255, 255, 255, 0.06);
+    }
+    [data-bs-theme="dark"] .dashboard-card:hover {
+        box-shadow: 0 22px 48px rgba(255, 255, 255, 0.08) !important;
     }
 </style>
 

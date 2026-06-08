@@ -14,9 +14,20 @@ class InvoiceController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $invoices = Invoice::with('product')->orderBy('id', 'desc')->paginate(15);
+        $invoices = Invoice::with('product')
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = '%' . $request->input('search') . '%';
+                $query->where(function ($query) use ($search) {
+                    $query->where('customer', 'like', $search)
+                          ->orWhere('invoice_number', 'like', $search);
+                });
+            })
+            ->orderBy('id', 'desc')
+            ->paginate(15)
+            ->withQueryString();
+
         return view('invoice.index', ['invoices' => $invoices]);
     }
 

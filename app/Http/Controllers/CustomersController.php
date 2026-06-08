@@ -11,9 +11,16 @@ class CustomersController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $customers = customers::orderBy('id', 'desc')->paginate(15);
+        $customers = customers::when($request->filled('search'), function ($query) use ($request) {
+                $search = '%' . $request->input('search') . '%';
+                $query->where('name', 'like', $search);
+            })
+            ->orderBy('id', 'desc')
+            ->paginate(15)
+            ->withQueryString();
+
         return view('customers.index', ['customers' => $customers]);
     }
 

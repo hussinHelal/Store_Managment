@@ -11,6 +11,22 @@ class AppNotificationController extends Controller
     public function list()
     {
         $notifications = AppNotification::active()->latest()->get();
+
+        if (auth()->check()) {
+            $user = auth()->user();
+            $reads = \App\Models\NotificationRead::where('user_id', $user->id)->pluck('app_notification_id')->toArray();
+
+            $notifications->transform(function ($notification) use ($reads) {
+                $notification->is_read = in_array($notification->id, $reads);
+                return $notification;
+            });
+        } else {
+            $notifications->transform(function ($notification) {
+                $notification->is_read = false;
+                return $notification;
+            });
+        }
+
         return view('notifications.list', compact('notifications'));
     }
 
@@ -86,7 +102,7 @@ class AppNotificationController extends Controller
             'message' => 'required|string',
             'starts_at' => 'nullable|date',
             'ends_at' => 'nullable|date|after_or_equal:starts_at',
-            'is_active' => 'sometimes|boolean',
+            'is_active' => 'nullable|boolean',
         ]);
 
         $validated['is_active'] = $request->has('is_active');

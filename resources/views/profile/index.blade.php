@@ -5,7 +5,7 @@
 <div class="container py-5">
     <div class="row g-4">
         <div class="col-xl-4">
-            <div class="card rounded-4 shadow-sm border-0 overflow-hidden">
+            <div class="card rounded-4 shadow-sm border-0 overflow-hidden bg-body">
                 <div class="card-body p-0">
                     <div class="p-4 text-white bg-gradient">
                         <div class="d-flex align-items-center justify-content-between mb-4">
@@ -24,15 +24,15 @@
                         <p class="mb-1 opacity-85">{{ $profile->email ?? 'لا يوجد بريد' }}</p>
                         <span class="badge bg-light text-dark fw-semibold">{{ ucfirst($profile->role) }}</span>
                     </div>
-                    <div class="p-4 bg-white">
+                    <div class="p-4 bg-body">
                         <div class="d-grid gap-2">
                             <a href="{{ route('profile.edit', $profile->id) }}" class="btn btn-primary btn-lg rounded-4">
                                 <i class="fas fa-pencil-alt me-2"></i> تعديل الملف
                             </a>
-                            <form action="{{ route('profile.destroy', $profile->id) }}" method="POST">
+                            <form action="{{ route('profile.destroy', $profile->id) }}" method="POST" class="d-grid">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="btn btn-outline-danger btn-lg rounded-4" onclick="return confirm('هل أنت متأكد من الحذف؟')">
+                                <button type="submit" class="btn btn-outline-danger btn-lg rounded-4 w-100" onclick="return confirm('هل أنت متأكد من الحذف؟')">
                                     <i class="fas fa-trash me-2"></i> حذف الحساب
                                 </button>
                             </form>
@@ -44,10 +44,10 @@
 
         <div class="col-xl-8">
             <div class="card rounded-4 shadow-sm border-0">
-                <div class="card-header bg-white border-0 py-4">
+                <div class="card-header bg-body-tertiary border-0 py-4">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <h5 class="mb-1">لوحة تحكم المستخدمين</h5>
+                            <h5 class="mb-1 text-body">لوحة تحكم المستخدمين</h5>
                             <p class="text-muted mb-0">يمكن للمشرف الأعلى تغيير دور المستخدمين من هنا.</p>
                         </div>
                         <span class="badge rounded-pill text-white" style="background: linear-gradient(135deg, #0ea5e9 0%, #7c3aed 100%);">
@@ -55,7 +55,7 @@
                         </span>
                     </div>
                 </div>
-                <div class="card-body bg-light p-4">
+                <div class="card-body bg-body p-4">
                     @if($profile->isSuperAdmin())
                         @if($users && $users->count())
                             <div class="table-responsive">
