@@ -20,14 +20,17 @@ class User extends Authenticatable
     {
         return $this->hasOne(profile::class);
     }
-    
+
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'role',
+        'system_account',
+        'is_active',
         'photo',
-        'password_confirmation'
+        'password_confirmation',
     ];
 
     /**
@@ -50,6 +53,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
     public function isAdmin()
@@ -67,10 +71,6 @@ class User extends Authenticatable
         return $this->role === 'cashier';
     }
 
-    public function hasRole($role)
-    {
-        return $this->role === $role;
-    }
     // public function isCashier()
     // {
     //     return $this->role === 'cashier';

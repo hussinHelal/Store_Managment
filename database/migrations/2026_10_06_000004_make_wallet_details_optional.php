@@ -15,8 +15,18 @@ return new class extends Migration
 
     public function up(): void
     {
-        Schema::table('wallets', function (Blueprint $table): void {
-            $table->dropUnique('wallets_provider_identifier_unique');
+        if (! Schema::hasTable('wallets')) {
+            return;
+        }
+
+        $hasUniqueIndex = Schema::hasIndex('wallets', ['provider', 'identifier'])
+            || Schema::hasIndex('wallets', 'wallets_provider_identifier_unique');
+
+        Schema::table('wallets', function (Blueprint $table) use ($hasUniqueIndex): void {
+            if ($hasUniqueIndex) {
+                $table->dropUnique(['provider', 'identifier']);
+            }
+
             $table->string('name', 100)->nullable()->change();
             $table->string('provider', 30)->nullable()->change();
             $table->string('identifier', 64)->nullable()->change();
@@ -33,10 +43,21 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('wallets')) {
+            return;
+        }
+
         foreach (self::OPTIONAL_COLUMNS as $column) {
-            if (DB::table('wallets')->whereNull($column)->exists()) {
+            if (Schema::hasColumn('wallets', $column) && DB::table('wallets')->whereNull($column)->exists()) {
                 throw new RuntimeException("Rollback refused: wallets.{$column} contains NULL values.");
             }
+        }
+
+        $hasUniqueIndex = Schema::hasIndex('wallets', ['provider', 'identifier'])
+            || Schema::hasIndex('wallets', 'wallets_provider_identifier_unique');
+
+        if ($hasUniqueIndex) {
+            return;
         }
 
         $hasDuplicateIdentifiers = DB::table('wallets')

@@ -35,6 +35,18 @@ class Wallet extends Model
         return [
             'is_active' => 'boolean',
             'warn_at_percent' => 'integer',
+            'opening_balance' => 'decimal:2',
+            'balance' => 'decimal:2',
+            'per_transaction_limit' => 'decimal:2',
+            'daily_send_limit' => 'decimal:2',
+            'daily_receive_limit' => 'decimal:2',
+            'monthly_send_limit' => 'decimal:2',
+            'monthly_receive_limit' => 'decimal:2',
+            'default_commission_percent' => 'decimal:2',
+            'default_commission_min' => 'decimal:2',
+            'default_fee_percent' => 'decimal:2',
+            'default_fee_min' => 'decimal:2',
+            'default_fee_max' => 'decimal:2',
         ];
     }
 

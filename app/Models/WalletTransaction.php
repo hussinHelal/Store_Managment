@@ -27,6 +27,14 @@ class WalletTransaction extends Model
             'occurred_at' => 'datetime',
             'reversed_at' => 'datetime',
             'settled_at' => 'datetime',
+            'amount' => 'decimal:2',
+            'commission' => 'decimal:2',
+            'fee' => 'decimal:2',
+            'profit' => 'decimal:2',
+            'wallet_delta' => 'decimal:2',
+            'cash_delta' => 'decimal:2',
+            'balance_after' => 'decimal:2',
+            'receivable' => 'decimal:2',
         ];
     }
 

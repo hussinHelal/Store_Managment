@@ -77,7 +77,7 @@ class SyncAccounts extends Command
                 $adminRole->syncPermissions($pagePermissions);
 
                 $superadminRole = Role::firstOrCreate(['name' => 'Superadmin', 'guard_name' => 'web']);
-                $superadminRole->syncPermissions([]);
+                $superadminRole->syncPermissions($pagePermissions);
 
                 $this->syncAccount('superadmin', $superadmin, $superadminRole);
                 $this->syncAccount('admin', $admin, $adminRole);

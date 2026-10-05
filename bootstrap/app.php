@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\EnsurePagePermission;
 use App\Http\Middleware\EnsureUserHasRole;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
          $middleware->alias([
             'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
             'role' => EnsureUserHasRole::class,
+            'page.access' => EnsurePagePermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

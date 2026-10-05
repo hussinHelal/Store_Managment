@@ -108,6 +108,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/maintenance/{maintenance}/repaired', [MaintenanceController::class, 'repaired'])->name('maintenance.repaired');
 });
 
+require __DIR__.'/wallets.php';
+require __DIR__.'/cashier.php';
+require __DIR__.'/damaged.php';
+
     // Route::get('/user', [AuthController::class, 'user'])->name('user');
 
 
