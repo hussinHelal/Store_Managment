@@ -45,7 +45,7 @@ class Wallet extends Model
 
     public function providerLabel(): string
     {
-        return self::PROVIDERS[$this->provider] ?? $this->provider;
+        return self::PROVIDERS[$this->provider] ?? (string) $this->provider;
     }
 
     /** A limit in cents, or null when it is empty / zero (= unlimited). */

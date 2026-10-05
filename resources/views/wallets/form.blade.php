@@ -29,14 +29,15 @@
                 <div class="col-md-6">
                     <label for="name" class="form-label">اسم المحفظة</label>
                     <input type="text" id="name" name="name" class="form-control @error('name') is-invalid @enderror"
-                           value="{{ $value('name') }}" maxlength="100" required placeholder="مثال: فودافون كاش - الخط الأول">
+                           value="{{ $value('name') }}" maxlength="100" placeholder="مثال: فودافون كاش - الخط الأول">
                     @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-6">
                     <label for="provider" class="form-label">نوع المحفظة</label>
-                    <select id="provider" name="provider" class="form-select @error('provider') is-invalid @enderror" required>
+                    <select id="provider" name="provider" class="form-select @error('provider') is-invalid @enderror">
+                        <option value="">بدون تحديد</option>
                         @foreach (\App\Models\Wallet::PROVIDERS as $key => $label)
-                            <option value="{{ $key }}" @selected($value('provider', 'vodafone_cash') === $key)>{{ $label }}</option>
+                            <option value="{{ $key }}" @selected($value('provider') === $key)>{{ $label }}</option>
                         @endforeach
                     </select>
                     @error('provider')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -44,7 +45,7 @@
                 <div class="col-md-6">
                     <label for="identifier" class="form-label">رقم المحفظة / عنوان إنستا باي</label>
                     <input type="text" id="identifier" name="identifier" dir="ltr" class="form-control @error('identifier') is-invalid @enderror"
-                           value="{{ $value('identifier') }}" maxlength="64" required placeholder="01012345678">
+                           value="{{ $value('identifier') }}" maxlength="64" placeholder="01012345678">
                     @error('identifier')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-6">
@@ -62,6 +63,22 @@
                         @error('opening_balance')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 @endunless
+                @if ($editing)
+                    <div class="col-md-6">
+                        <label for="balance" class="form-label">تعديل الرصيد إلى</label>
+                        <input type="text" inputmode="decimal" id="balance" name="balance" dir="ltr"
+                               class="form-control @error('balance') is-invalid @enderror" value="{{ old('balance', '') }}">
+                        <div class="form-text">الرصيد الحالي: {{ number_format((float) $wallet->balance, 2) }} ج.م</div>
+                        @error('balance')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-6">
+                        <label for="balance_reason" class="form-label">سبب تعديل الرصيد</label>
+                        <input type="text" id="balance_reason" name="balance_reason"
+                               class="form-control @error('balance_reason') is-invalid @enderror"
+                               value="{{ old('balance_reason', '') }}" maxlength="255">
+                        @error('balance_reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                @endif
                 <div class="col-md-6 d-flex align-items-end">
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" role="switch" id="is_active" name="is_active" value="1"

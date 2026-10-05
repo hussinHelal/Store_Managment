@@ -68,11 +68,26 @@ class WalletController extends Controller
 
     public function update(SaveWalletRequest $request, Wallet $wallet, WalletLedgerService $ledger): RedirectResponse
     {
-        $wallet->fill($request->validated());
-        $changes = array_keys($wallet->getDirty());
-        $wallet->save();
+        $data = $request->validated();
+        $targetBalance = isset($data['balance']) ? Money::cents($data['balance']) : null;
+        $balanceReason = $data['balance_reason'] ?? '';
+        unset($data['balance'], $data['balance_reason']);
 
-        $ledger->audit($request->user(), 'wallet.updated', 'wallet', $wallet->id, ['changed' => $changes], $request->ip());
+        DB::transaction(function () use ($data, $targetBalance, $balanceReason, $request, $wallet, $ledger): void {
+            $lockedWallet = Wallet::query()->lockForUpdate()->findOrFail($wallet->id);
+            $wallet->fill($data);
+            $changes = array_keys($wallet->getDirty());
+            $wallet->save();
+
+            if ($targetBalance !== null) {
+                $delta = $targetBalance - Money::cents($lockedWallet->balance);
+                if ($delta !== 0) {
+                    $ledger->adjust($lockedWallet, Money::decimal($delta), $balanceReason, $request->user(), $request->ip());
+                }
+            }
+
+            $ledger->audit($request->user(), 'wallet.updated', 'wallet', $wallet->id, ['changed' => $changes], $request->ip());
+        });
 
         return redirect()->route('wallets.index')->with('success', 'تم تحديث بيانات المحفظة.');
     }

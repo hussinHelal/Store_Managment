@@ -16,8 +16,9 @@ class SaveWalletRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $identifier = Digits::identifier($this->input('identifier'));
         $merge = [
-            'identifier' => Digits::identifier((string) $this->input('identifier')),
+            'identifier' => $identifier === '' ? null : $identifier,
             'is_active' => $this->boolean('is_active'),
         ];
 
@@ -25,7 +26,7 @@ class SaveWalletRequest extends FormRequest
         foreach ([
             'opening_balance', 'per_transaction_limit', 'daily_send_limit', 'daily_receive_limit',
             'monthly_send_limit', 'monthly_receive_limit', 'default_commission_percent',
-            'default_commission_min', 'default_fee_percent', 'default_fee_min', 'default_fee_max',
+            'default_commission_min', 'default_fee_percent', 'default_fee_min', 'default_fee_max', 'balance',
         ] as $field) {
             if ($this->filled($field)) {
                 $merge[$field] = trim((string) Digits::ascii((string) $this->input($field)));
@@ -42,10 +43,10 @@ class SaveWalletRequest extends FormRequest
         $money = ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:999999999'];
 
         $rules = [
-            'name' => ['required', 'string', 'max:100'],
-            'provider' => ['required', Rule::in(array_keys(Wallet::PROVIDERS))],
+            'name' => ['nullable', 'string', 'max:100'],
+            'provider' => ['nullable', Rule::in(array_keys(Wallet::PROVIDERS))],
             'identifier' => [
-                'required', 'string', 'max:64',
+                'nullable', 'string', 'max:64',
                 function (string $attribute, mixed $value, \Closure $fail) use ($provider): void {
                     $value = (string) $value;
                     $valid = Digits::isEgyptianMobile($value)
@@ -57,7 +58,6 @@ class SaveWalletRequest extends FormRequest
                             : 'اكتب رقم موبايل مصري صحيح (11 رقماً يبدأ بـ 010 أو 011 أو 012 أو 015).');
                     }
                 },
-                Rule::unique('wallets', 'identifier')->where('provider', $provider)->ignore($wallet?->id),
             ],
             'holder_name' => ['nullable', 'string', 'max:100'],
             'per_transaction_limit' => $money,
@@ -65,13 +65,13 @@ class SaveWalletRequest extends FormRequest
             'daily_receive_limit' => $money,
             'monthly_send_limit' => $money,
             'monthly_receive_limit' => $money,
-            'warn_at_percent' => ['required', 'integer', 'between:1,100'],
+            'warn_at_percent' => ['nullable', 'integer', 'between:1,100'],
             'default_commission_percent' => ['nullable', 'numeric', 'decimal:0,2', 'between:0,100'],
             'default_commission_min' => $money,
             'default_fee_percent' => ['nullable', 'numeric', 'decimal:0,2', 'between:0,100'],
             'default_fee_min' => $money,
             'default_fee_max' => $money,
-            'is_active' => ['required', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
 
@@ -79,6 +79,9 @@ class SaveWalletRequest extends FormRequest
         // the balance only moves through the ledger (transactions or adjustments).
         if (! $wallet) {
             $rules['opening_balance'] = $money;
+        } else {
+            $rules['balance'] = $money;
+            $rules['balance_reason'] = ['nullable', 'required_with:balance', 'string', 'min:3', 'max:255'];
         }
 
         return $rules;
@@ -92,6 +95,8 @@ class SaveWalletRequest extends FormRequest
             'identifier' => 'رقم المحفظة',
             'holder_name' => 'اسم صاحب المحفظة',
             'opening_balance' => 'الرصيد الافتتاحي',
+            'balance' => 'الرصيد المستهدف',
+            'balance_reason' => 'سبب تعديل الرصيد',
             'per_transaction_limit' => 'حد العملية الواحدة',
             'daily_send_limit' => 'حد التحويل اليومي',
             'daily_receive_limit' => 'حد الاستلام اليومي',
