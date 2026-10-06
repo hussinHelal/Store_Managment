@@ -1,0 +1,28 @@
+@extends('layouts.app')
+
+@section('content')
+
+    <span class="text-center border border-1 rounded text-bold">تعديل العميل</span>
+    <form action="{{ route('customers.update', $customers->id) }}" method="POST">
+      @csrf
+      @method('PUT')
+
+      <div class="mb-3">
+        <label for="name" class="form-label">الاسم</label>
+        <input type="text" class="form-control" id="name" name="name" value="{{ $customers->name }}">
+      </div>
+
+      <div class="mb-3">
+        <label for="phone" class="form-label">التليفون</label>
+        <input type="text" class="form-control" id="phone" name="phone" value="{{ $customers->phone }}">
+      </div>
+
+      <div class="mb-3">
+        <label for="address" class="form-label">العنوان</label>
+        <input type="text" class="form-control" id="address" name="address" value="{{ $customers->address }}">
+      </div>
+
+      @include('components.form-actions', ['submitLabel' => 'تحديث', 'backUrl' => route('customers.index')])
+    </form>
+
+@endsection

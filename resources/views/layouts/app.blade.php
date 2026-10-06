@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="rtl" data-bs-theme="light">
+    @include('components.head')
+    <body>
+        <header>
+            @include('components.nav')
+        </header>
+
+        <div class="d-flex flex-column flex-lg-row app-shell">
+            @include('components.sidebar')
+            <main class="flex-grow-1 p-4">
+                @include('components.alerts')
+                @yield('main')
+                @yield('content')
+            </main>
+        </div>
+
+        @include('components.foot')
+
+        @stack('scripts')
+
+    </body>
+</html>

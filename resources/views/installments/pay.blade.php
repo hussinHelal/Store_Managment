@@ -1,0 +1,49 @@
+@extends('layouts.app')
+@section('content')
+    <span class="text-center border border-1 rounded text-bold">دفع قسط</span>
+    <form action="{{ route('installments.pay', $installment) }}" method="POST">
+      @csrf
+      @method('PUT')
+
+
+      <div class="mb-3">
+        <label class="form-label">سعر المنتج</label>
+        <input type="number" class="form-control" value="{{ $installment->product_price }}" readonly>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">إجمالي المدفوع سابقاً</label>
+        <input type="number" class="form-control" value="{{ $installment->paid_amount }}" readonly>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">المتبقي الحالي</label>
+        <input type="number" class="form-control" value="{{ $installment->remaining }}" readonly>
+      </div>
+
+      <div class="mb-3">
+        <label for="paid_amount" class="form-label">المبلغ المدفوع الآن</label>
+        <input type="number" class="form-control" id="paid_amount" name="paid_amount"
+               value="0" min="1" max="{{ $installment->remaining }}">
+      </div>
+
+      <div class="mb-3">
+        <label for="remaining_after" class="form-label">المتبقي بعد الدفع</label>
+        <input type="number" class="form-control" id="remaining_after"
+               value="{{ $installment->remaining }}" readonly>
+      </div>
+
+      @include('components.form-actions', ['submitLabel' => 'دفع', 'backUrl' => route('installments.index')])
+    </form>
+    @push('scripts')
+    <script>
+      document.getElementById('paid_amount').addEventListener('input', function () {
+          const currentRemaining = {{ $installment->remaining }};
+          const payNow = parseFloat(this.value) || 0;
+          const remainingAfter = currentRemaining - payNow;
+          document.getElementById('remaining_after').value = remainingAfter;
+      });
+    </script>
+    @endpush
+
+@endsection
