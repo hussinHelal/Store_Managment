@@ -3,25 +3,60 @@
 namespace App\Http\Controllers;
 
 use App\Models\WalletAuditLog;
+use App\Support\AuditPresenter;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
-/** Who did what, when, from where. Superadmin only. */
+/** Who did what, when, from where, in readable Arabic. Superadmin only. */
 class WalletAuditController extends Controller
 {
     public function index(Request $request)
     {
         abort_unless($request->user()->isSuperAdmin(), 403);
 
-        $request->validate(['action' => ['nullable', 'string', 'max:60']]);
+        $filters = $request->validate([
+            'q'      => ['nullable', 'string', 'max:80'],
+            'action' => ['nullable', Rule::in(array_keys(AuditPresenter::ACTIONS))],
+            'from'   => ['nullable', 'date'],
+            'to'     => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
+
+        $term = trim((string) ($filters['q'] ?? ''));
 
         $logs = WalletAuditLog::query()
-            ->when($request->filled('action'), function ($query) use ($request) {
-                $query->where('action', 'like', addcslashes(trim((string) $request->query('action')), '%_\\').'%');
+            ->when($term !== '', function ($query) use ($term) {
+                $like     = '%'.addcslashes($term, '%_\\').'%';
+                $actions  = AuditPresenter::actionsMatching($term);
+                $subjects = AuditPresenter::subjectsMatching($term);
+
+                $query->where(function ($search) use ($like, $term, $actions, $subjects) {
+                    $search->where('user_name', 'like', $like)
+                        ->orWhere('ip', 'like', $like)
+                        ->orWhereRaw('CAST(meta AS CHAR) LIKE ?', [$like]);
+
+                    if ($actions !== []) {
+                        $search->orWhereIn('action', $actions);
+                    }
+                    if ($subjects !== []) {
+                        $search->orWhereIn('subject_type', $subjects);
+                    }
+                    if (ctype_digit(ltrim($term, '#'))) {
+                        $search->orWhere('subject_id', (int) ltrim($term, '#'));
+                    }
+                });
             })
+            ->when(! empty($filters['action'] ?? null), fn ($query) => $query->where('action', $filters['action']))
+            ->when(! empty($filters['from'] ?? null),   fn ($query) => $query->whereDate('created_at', '>=', $filters['from']))
+            ->when(! empty($filters['to'] ?? null),     fn ($query) => $query->whereDate('created_at', '<=', $filters['to']))
             ->latest('id')
             ->paginate(50)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(fn (WalletAuditLog $log) => AuditPresenter::row($log));
 
-        return view('wallets.audit', ['logs' => $logs, 'action' => (string) $request->query('action', '')]);
+        return view('wallets.audit', [
+            'logs'    => $logs,
+            'filters' => $filters,
+            'actions' => AuditPresenter::ACTIONS,
+        ]);
     }
 }
