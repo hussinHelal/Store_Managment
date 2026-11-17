@@ -15,6 +15,10 @@ class SupplierResource extends JsonResource
             'phone' => $this->phone,
             'email' => $this->email,
             'address' => $this->address,
+            'notes' => $this->when(
+                $request->user()?->can('page.suppliers.manage'),
+                $this->notes,
+            ),
             'opening_balance' => $this->money($this->opening_balance),
             'balance' => $this->money($this->balance),
             'purchases_count' => $this->whenCounted('purchases'),

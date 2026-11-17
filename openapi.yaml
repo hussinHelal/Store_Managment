@@ -1256,6 +1256,117 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+    put:
+      operationId: updateSupplier
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: supplier
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 64
+            pattern: '^[A-Za-z0-9-]+$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                phone:
+                  type: [string, 'null']
+                  maxLength: 20
+                email:
+                  type: [string, 'null']
+                  format: email
+                  maxLength: 255
+                address:
+                  type: [string, 'null']
+                  maxLength: 255
+                opening_balance:
+                  type: [string, number, 'null']
+                  minimum: 0
+                  maximum: 99999999
+                notes:
+                  type: [string, 'null']
+                  maxLength: 2000
+      responses:
+        '200':
+          description: Supplier updated; notes are included only for manage users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Supplier'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Idempotency key was previously used with a different payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+    delete:
+      operationId: deleteSupplier
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: supplier
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 64
+            pattern: '^[A-Za-z0-9-]+$'
+      responses:
+        '204':
+          description: Supplier without purchase or payment history was deleted
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Idempotency key was previously used with a different payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Supplier has financial history and cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /wallets:
     get:
       operationId: getWalletOverview
@@ -1675,6 +1786,9 @@ paths:
                 description:
                   type: [string, 'null']
                   maxLength: 5000
+                notes:
+                  type: [string, 'null']
+                  maxLength: 2000
                 status:
                   type: string
                   enum: [قيد الانتظار, قيد الصيانة, مكتمل, مرفوض]
@@ -1759,6 +1873,9 @@ paths:
                 description:
                   type: [string, 'null']
                   maxLength: 5000
+                notes:
+                  type: [string, 'null']
+                  maxLength: 2000
                 status:
                   type: string
                   enum: [قيد الانتظار, قيد الصيانة, مكتمل, مرفوض]
@@ -1972,6 +2089,9 @@ components:
           type: [string, 'null']
         address:
           type: [string, 'null']
+        notes:
+          type: [string, 'null']
+          description: Returned only to users with page.suppliers.manage.
         opening_balance:
           type: string
           pattern: '^\d+\.\d{2}$'
@@ -2065,6 +2185,9 @@ components:
           type: [string, 'null']
         description:
           type: [string, 'null']
+        notes:
+          type: [string, 'null']
+          description: Returned only to users with page.maintenance.manage.
         status:
           type: string
         requested_date:

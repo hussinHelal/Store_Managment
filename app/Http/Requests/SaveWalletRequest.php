@@ -79,6 +79,7 @@ class SaveWalletRequest extends FormRequest
             'default_fee_max' => $money,
             'is_active' => ['sometimes', 'boolean'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'balance' => ['prohibited'],
         ];
 
         // The opening balance is set once, when the wallet is created. After that

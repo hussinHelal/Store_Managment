@@ -24,6 +24,10 @@
                         <span class="input-group-text"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></span>
                         <input type="text" id="q" class="form-control form-control-lg" maxlength="100"
                                autocomplete="off" autofocus placeholder="امسح الباركود أو اكتب اسم المنتج">
+                        <button type="button" id="scanCameraButton" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#cameraScanModal">
+                            <i class="fa-solid fa-camera" aria-hidden="true"></i>
+                            <span class="visually-hidden">مسح بالكاميرا</span>
+                        </button>
                         <span class="input-group-text d-none" id="searchSpinner">
                             <span class="spinner-border spinner-border-sm" role="status" aria-label="جاري البحث"></span>
                         </span>
@@ -90,6 +94,24 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="cameraScanModal" tabindex="-1" aria-labelledby="cameraScanTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="cameraScanTitle">مسح باركود المنتج</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                </div>
+                <div class="modal-body">
+                    <video id="cameraScanVideo" class="w-100 rounded bg-dark" playsinline></video>
+                    <p id="cameraScanStatus" class="small text-body-secondary mt-2 mb-0" role="status" aria-live="polite">اسمح باستخدام الكاميرا لبدء المسح.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="cancelCameraScan" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق الكاميرا</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -116,6 +138,10 @@
     const checkoutBtn = $('checkoutBtn'), checkoutLabel = $('checkoutLabel');
     const clearBtn = $('clearCart'), payFullBtn = $('payFull');
     const msgBox = $('msg'), successBox = $('successBox');
+    const cameraModal = $('cameraScanModal');
+    const cameraVideo = $('cameraScanVideo');
+    const cameraStatus = $('cameraScanStatus');
+    let cameraSession = null;
 
     // ---------- helpers ----------
     // Safe DOM builder: text always goes through textContent/append, never innerHTML.
@@ -504,6 +530,34 @@
     });
 
     checkoutBtn.addEventListener('click', checkout);
+
+    cameraModal.addEventListener('shown.bs.modal', () => {
+        if (!window.createBarcodeScanner) {
+            cameraStatus.textContent = 'تعذر تحميل قارئ الباركود. استخدم ماسح الباركود أو البحث اليدوي.';
+            return;
+        }
+
+        cameraStatus.textContent = 'جارٍ تشغيل الكاميرا…';
+        cameraSession?.stop();
+        cameraSession = window.createBarcodeScanner(cameraVideo, (barcode) => {
+            cameraStatus.textContent = 'تمت قراءة الباركود.';
+            bootstrap.Modal.getOrCreateInstance(cameraModal).hide();
+            qInput.value = barcode;
+            qInput.focus();
+            runSearch(true);
+        }, () => {
+            cameraStatus.textContent = 'تعذر تشغيل الكاميرا. تحقق من الإذن واستخدم HTTPS أو البحث اليدوي.';
+        }, () => {
+            cameraStatus.textContent = 'الكاميرا تعمل. قرّب الباركود من إطار الصورة.';
+        });
+    });
+
+    cameraModal.addEventListener('hidden.bs.modal', () => {
+        cameraSession?.stop();
+        cameraSession = null;
+        cameraVideo.srcObject?.getTracks().forEach((track) => track.stop());
+        cameraVideo.srcObject = null;
+    });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'F2') { e.preventDefault(); qInput.focus(); qInput.select(); }

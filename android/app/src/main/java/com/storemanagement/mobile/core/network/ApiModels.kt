@@ -163,6 +163,7 @@ data class SupplierDto(
     val phone: String? = null,
     val email: String? = null,
     val address: String? = null,
+    val notes: String? = null,
     @SerialName("opening_balance") val openingBalance: String,
     val balance: String,
     @SerialName("purchases_count") val purchasesCount: Int? = null,
@@ -174,6 +175,7 @@ data class SupplierInputDto(
     val phone: String? = null,
     val email: String? = null,
     val address: String? = null,
+    val notes: String? = null,
     @SerialName("opening_balance") val openingBalance: String? = null,
 )
 
@@ -202,6 +204,7 @@ data class MaintenanceDto(
     val phone: String? = null,
     val address: String? = null,
     val description: String? = null,
+    val notes: String? = null,
     val status: String,
     @SerialName("requested_date") val requestedDate: String,
     @SerialName("completed_date") val completedDate: String? = null,
@@ -214,6 +217,7 @@ data class MaintenanceInputDto(
     val phone: String? = null,
     val address: String? = null,
     val description: String? = null,
+    val notes: String? = null,
     val status: String,
     @SerialName("requested_date") val requestedDate: String,
 )

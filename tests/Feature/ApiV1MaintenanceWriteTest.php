@@ -24,6 +24,8 @@ class ApiV1MaintenanceWriteTest extends TestCase
             'phone' => null,
             'address' => null,
             'description' => null,
+            'notes' => 'Leave accessories with reception',
+            'notes' => 'Leave accessories with reception',
             'status' => 'قيد الصيانة',
             'requested_date' => '2026-11-09',
         ];
@@ -34,7 +36,9 @@ class ApiV1MaintenanceWriteTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.phone', null)
             ->assertJsonPath('data.address', null)
-            ->assertJsonPath('data.description', null);
+            ->assertJsonPath('data.description', null)
+            ->assertJsonPath('data.notes', 'Leave accessories with reception');
+        $created->assertJsonPath('data.notes', 'Leave accessories with reception');
         $id = $created->json('data.id');
 
         $this->withToken($token)
@@ -46,7 +50,8 @@ class ApiV1MaintenanceWriteTest extends TestCase
         $this->withToken($token)
             ->putJson('/api/v1/maintenance/'.$id, array_replace($payload, ['owner' => 'Layla']))
             ->assertOk()
-            ->assertJsonPath('data.owner', 'Layla');
+            ->assertJsonPath('data.owner', 'Layla')
+            ->assertJsonPath('data.notes', 'Leave accessories with reception');
 
         $this->withToken($token)
             ->deleteJson('/api/v1/maintenance/'.$id)

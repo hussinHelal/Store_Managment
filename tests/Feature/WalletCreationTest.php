@@ -58,12 +58,12 @@ class WalletCreationTest extends TestCase
         $this->assertNull($wallet->name);
         $this->assertNull($wallet->provider);
         $this->assertNull($wallet->identifier);
-        $this->assertNull($wallet->warn_at_percent);
-        $this->assertNull($wallet->default_commission_percent);
+        $this->assertSame(80, $wallet->warn_at_percent);
+        $this->assertSame('0.00', $wallet->default_commission_percent);
         $this->assertSame('0.00', $wallet->balance);
     }
 
-    public function test_wallet_balance_can_be_set_from_the_edit_form_with_a_reason(): void
+    public function test_wallet_balance_cannot_be_changed_through_metadata_edit(): void
     {
         $user = $this->createSuperadmin();
         $wallet = Wallet::query()->forceCreate([
@@ -75,12 +75,27 @@ class WalletCreationTest extends TestCase
         ]);
 
         $this->actingAs($user, 'web')
-            ->put(route('wallets.update', $wallet), [
-                'is_active' => '1',
-                'balance' => '175',
-                'balance_reason' => 'Provider balance correction',
-            ])
-            ->assertRedirect(route('wallets.index'));
+            ->put(route('wallets.update', $wallet), ['is_active' => '1', 'balance' => '175'])
+            ->assertSessionHasErrors('balance');
+
+        $this->assertSame('100.00', $wallet->fresh()->balance);
+        $this->assertDatabaseMissing('wallet_transactions', ['wallet_id' => $wallet->id, 'type' => 'adjustment']);
+    }
+
+    public function test_wallet_balance_can_be_adjusted_through_the_ledger_with_a_reason(): void
+    {
+        $user = $this->createSuperadmin();
+        $wallet = Wallet::query()->forceCreate([
+            'name' => 'Main wallet',
+            'provider' => 'other',
+            'identifier' => '01012345678',
+            'opening_balance' => 100,
+            'balance' => 100,
+        ]);
+
+        $this->actingAs($user, 'web')
+            ->post(route('wallets.adjust', $wallet), ['amount' => '75', 'reason' => 'Provider balance correction'])
+            ->assertRedirect();
 
         $this->assertSame('175.00', $wallet->fresh()->balance);
         $adjustment = WalletTransaction::query()->where('wallet_id', $wallet->id)->firstOrFail();
@@ -89,7 +104,7 @@ class WalletCreationTest extends TestCase
         $this->assertSame('Provider balance correction', $adjustment->notes);
     }
 
-    public function test_wallet_balance_edit_requires_a_reason(): void
+    public function test_wallet_balance_adjustment_requires_a_reason(): void
     {
         $user = $this->createSuperadmin();
         $wallet = Wallet::query()->forceCreate([
@@ -101,12 +116,11 @@ class WalletCreationTest extends TestCase
         ]);
 
         $this->actingAs($user, 'web')
-            ->put(route('wallets.update', $wallet), ['balance' => '175', 'is_active' => '1'])
-            ->assertSessionHasErrors('balance_reason');
+            ->post(route('wallets.adjust', $wallet), ['amount' => '75'])
+            ->assertSessionHasErrors('reason');
 
         $this->assertSame('100.00', $wallet->fresh()->balance);
     }
-
     private function createSuperadmin(): User
     {
         config([

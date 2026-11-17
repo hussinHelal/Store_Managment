@@ -25,6 +25,7 @@ class CreateMaintenanceRequest extends ApiFormRequest
             'phone' => ['nullable', 'string', 'max:32'],
             'address' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
+            'notes' => ['nullable', 'string', 'max:2000'],
             'status' => ['required', Rule::in(['قيد الانتظار', 'قيد الصيانة', 'مكتمل', 'مرفوض'])],
             'requested_date' => ['required', 'date'],
         ];

@@ -16,6 +16,10 @@ class MaintenanceResource extends JsonResource
             'phone' => $this->phone,
             'address' => $this->address,
             'description' => $this->description,
+            'notes' => $this->when(
+                $request->user()?->can('page.maintenance.manage'),
+                $this->notes,
+            ),
             'status' => $this->status,
             'requested_date' => $this->requested_date?->toDateString(),
             'completed_date' => $this->completed_date?->toDateString(),

@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\SupplierIndexRequest;
 use App\Http\Requests\Api\CreateSupplierRequest;
-use App\Http\Requests\Api\UpdateSupplierRequest;
 use App\Http\Requests\Api\DeleteSupplierRequest;
+use App\Http\Requests\Api\SupplierIndexRequest;
+use App\Http\Requests\Api\UpdateSupplierRequest;
 use App\Http\Resources\Api\SupplierResource;
 use App\Models\Supplier;
 use App\Services\ApiIdempotencyService;
+use App\Services\SupplierDeletionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,7 @@ class SupplierController
     {
         $filters = $request->validated();
         $query = Supplier::query()
-            ->select(['id', 'name', 'phone', 'email', 'address', 'opening_balance', 'balance'])
+            ->select(['id', 'name', 'phone', 'email', 'address', 'opening_balance', 'balance', 'notes'])
             ->withCount('purchases');
         $term = trim((string) ($filters['q'] ?? ''));
 
@@ -88,10 +89,13 @@ class SupplierController
                     $locked->update([
                         'name' => $data['name'], 'phone' => $data['phone'] ?? null,
                         'email' => $data['email'] ?? null, 'address' => $data['address'] ?? null,
-                        'notes' => $data['notes'] ?? null,
+                        // Notes are omitted from API resources by design. A client that
+                        // cannot read them must not erase them during an unrelated edit.
+                        'notes' => array_key_exists('notes', $data) ? $data['notes'] : $locked->notes,
                         'opening_balance' => number_format($newOpening / 100, 2, '.', ''),
                         'balance' => number_format($newBalance / 100, 2, '.', ''),
                     ]);
+
                     return $locked->refresh()->loadCount('purchases');
                 }, 3);
 
@@ -99,15 +103,18 @@ class SupplierController
             });
     }
 
-    public function destroy(DeleteSupplierRequest $request, Supplier $supplier, ApiIdempotencyService $idempotency): JsonResponse
-    {
+    public function destroy(
+        DeleteSupplierRequest $request,
+        Supplier $supplier,
+        ApiIdempotencyService $idempotency,
+        SupplierDeletionService $deletion,
+    ): JsonResponse {
         $key = $request->validated('idempotency_key');
+
         return $idempotency->execute($request->user(), 'suppliers.delete', $key, ['supplier_id' => $supplier->id],
-            function () use ($supplier): array {
-                DB::transaction(function () use ($supplier): void {
-                    $locked = Supplier::query()->lockForUpdate()->findOrFail($supplier->id);
-                    $locked->delete(); // Related purchases and payment history cascade by schema design.
-                }, 3);
+            function () use ($supplier, $deletion): array {
+                $deletion->delete($supplier);
+
                 return ['status' => 204, 'body' => []];
             });
     }

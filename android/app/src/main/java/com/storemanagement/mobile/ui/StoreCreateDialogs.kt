@@ -339,6 +339,7 @@ internal fun SupplierCreateDialog(
     var phone by rememberSaveable(supplier?.id) { mutableStateOf(supplier?.phone.orEmpty()) }
     var email by rememberSaveable(supplier?.id) { mutableStateOf(supplier?.email.orEmpty()) }
     var address by rememberSaveable(supplier?.id) { mutableStateOf(supplier?.address.orEmpty()) }
+    var notes by rememberSaveable(supplier?.id) { mutableStateOf(supplier?.notes.orEmpty()) }
     var openingBalance by rememberSaveable(supplier?.id) { mutableStateOf(supplier?.openingBalance ?: "0.00") }
     var requestKey by remember { mutableStateOf(UUID.randomUUID().toString()) }
     var attemptedPayload by remember { mutableStateOf<String?>(null) }
@@ -349,8 +350,9 @@ internal fun SupplierCreateDialog(
         nextPhone: String = phone,
         nextEmail: String = email,
         nextAddress: String = address,
+        nextNotes: String = notes,
         nextOpening: String = openingBalance,
-    ) = listOf(nextName, nextPhone, nextEmail, nextAddress, nextOpening).joinToString("\u0000")
+    ) = listOf(nextName, nextPhone, nextEmail, nextAddress, nextNotes, nextOpening).joinToString("\u0000")
 
     fun preparePayload(nextPayload: String) {
         if (attemptedPayload != null && attemptedPayload != nextPayload) {
@@ -398,6 +400,12 @@ internal fun SupplierCreateDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
+                    notes,
+                    { preparePayload(payload(nextNotes = it)); notes = it },
+                    label = { Text("ملاحظات") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
                     openingBalance,
                     { value ->
                         val normalized = value.normalizeArabicDigits()
@@ -436,6 +444,7 @@ internal fun SupplierCreateDialog(
                             phone = phone.trim().ifBlank { null },
                             email = normalizedEmail.ifBlank { null },
                             address = address.trim().ifBlank { null },
+                            notes = notes.trim().ifBlank { null },
                             openingBalance = openingBalance,
                         ),
                         requestKey,
@@ -712,6 +721,7 @@ internal fun MaintenanceEditDialog(
     var phone by rememberSaveable(record?.id) { mutableStateOf(record?.phone.orEmpty()) }
     var address by rememberSaveable(record?.id) { mutableStateOf(record?.address.orEmpty()) }
     var description by rememberSaveable(record?.id) { mutableStateOf(record?.description.orEmpty()) }
+    var notes by rememberSaveable(record?.id) { mutableStateOf(record?.notes.orEmpty()) }
     var status by rememberSaveable(record?.id) { mutableStateOf(record?.status ?: "قيد الصيانة") }
     var requestedDate by rememberSaveable(record?.id) {
         mutableStateOf(record?.requestedDate ?: SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
@@ -727,9 +737,10 @@ internal fun MaintenanceEditDialog(
         nextPhone: String = phone,
         nextAddress: String = address,
         nextDescription: String = description,
+        nextNotes: String = notes,
         nextStatus: String = status,
         nextDate: String = requestedDate,
-    ) = listOf(nextName, nextOwner, nextPhone, nextAddress, nextDescription, nextStatus, nextDate).joinToString("\u0000")
+    ) = listOf(nextName, nextOwner, nextPhone, nextAddress, nextDescription, nextNotes, nextStatus, nextDate).joinToString("\u0000")
 
     fun updatePayload(nextPayload: String) {
         if (attemptedPayload != null && attemptedPayload != nextPayload) {
@@ -751,6 +762,7 @@ internal fun MaintenanceEditDialog(
                 OutlinedTextField(phone, { updatePayload(payload(nextPhone = it)); phone = it }, label = { Text("الهاتف (اختياري)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(address, { updatePayload(payload(nextAddress = it)); address = it }, label = { Text("العنوان (اختياري)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(description, { updatePayload(payload(nextDescription = it)); description = it }, label = { Text("الوصف (اختياري)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(notes, { updatePayload(payload(nextNotes = it)); notes = it }, label = { Text("ملاحظات (اختياري)") }, modifier = Modifier.fillMaxWidth())
                 DatePickerField(requestedDate, "تاريخ الاستلام", { value -> updatePayload(payload(nextDate = value)); requestedDate = value }, Modifier.fillMaxWidth())
                 androidx.compose.foundation.layout.Box {
                     OutlinedButton(onClick = { statusMenuOpen = true }, modifier = Modifier.fillMaxWidth()) { Text(status) }
@@ -779,6 +791,7 @@ internal fun MaintenanceEditDialog(
                             phone = phone.trim().ifBlank { null },
                             address = address.trim().ifBlank { null },
                             description = description.trim().ifBlank { null },
+                            notes = notes.trim().ifBlank { null },
                             status = status,
                             requestedDate = requestedDate,
                         ),

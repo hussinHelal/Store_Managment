@@ -110,4 +110,37 @@ class SupplierAccountsPayableTest extends TestCase
             ->assertSee('PUR-PAGE-16')
             ->assertSee('payments_page=2', false);
     }
+
+    public function test_supplier_with_financial_history_cannot_be_deleted(): void
+    {
+        $supplier = Supplier::create([
+            'name' => 'Supplier with history',
+            'opening_balance' => '0.00',
+            'balance' => '25.00',
+        ]);
+        $purchase = $supplier->purchases()->create([
+            'invoice_number' => 'SUP-DELETE-GUARD',
+            'purchase_date' => now()->toDateString(),
+            'payment_type' => 'credit',
+            'total_amount' => '25.00',
+            'paid_amount' => '0.00',
+            'remaining' => '25.00',
+            'status' => 'unpaid',
+        ]);
+        $payment = $supplier->payments()->create([
+            'purchase_id' => $purchase->id,
+            'receipt_number' => 'SUP-DELETE-PAYMENT',
+            'amount' => '5.00',
+            'payment_date' => now()->toDateString(),
+        ]);
+        $admin = User::where('system_account', 'admin')->firstOrFail();
+
+        $this->actingAs($admin, 'web')
+            ->delete(route('suppliers.destroy', $supplier))
+            ->assertSessionHasErrors('supplier');
+
+        $this->assertDatabaseHas('suppliers', ['id' => $supplier->id]);
+        $this->assertDatabaseHas('purchases', ['id' => $purchase->id]);
+        $this->assertDatabaseHas('supplier_payments', ['id' => $payment->id]);
+    }
 }

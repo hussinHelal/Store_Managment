@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\products;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -22,7 +23,7 @@ class PictureStorageService
     /** Never raise PHP's memory limit above this for a single upload. */
     private const MEMORY_CEILING_BYTES = 512 * 1024 * 1024;
 
-    public function productUrl(\App\Models\products $product, bool $thumbnail = true): ?string
+    public function productUrl(products $product, bool $thumbnail = true): ?string
     {
         if (! $product->image) {
             return null;
@@ -50,7 +51,7 @@ class PictureStorageService
 
         if ($thumbnail && ! $isLegacyPublicPath) {
             $thumbnailPath = dirname($path).'/thumbnails/'.basename($path);
-            if (Storage::disk('public')->exists($thumbnailPath)) {
+            if ($this->mediaDisk()->exists($thumbnailPath)) {
                 $path = $thumbnailPath;
             }
         }
@@ -67,14 +68,14 @@ class PictureStorageService
             return response()->file($filePath, $headers);
         }
 
-        abort_unless(Storage::disk('public')->exists($path), 404);
+        abort_unless($this->mediaDisk()->exists($path), 404);
 
-        return Storage::disk('public')->response($path, basename($path), $headers);
+        return $this->mediaDisk()->response($path, basename($path), $headers);
     }
 
     public function store(UploadedFile $file, string $folder): string
     {
-        if (!extension_loaded('gd') || !function_exists('imagecreatefromstring')) {
+        if (! extension_loaded('gd') || ! function_exists('imagecreatefromstring')) {
             throw new RuntimeException('The GD extension is required to process uploaded pictures.');
         }
 
@@ -82,7 +83,7 @@ class PictureStorageService
         $imageInfo = $realPath ? @getimagesize($realPath) : false;
         $mime = is_array($imageInfo) ? ($imageInfo['mime'] ?? '') : '';
 
-        if (!isset(self::MIME_EXTENSIONS[$mime])
+        if (! isset(self::MIME_EXTENSIONS[$mime])
             || $imageInfo[0] > self::MAX_DIMENSION
             || $imageInfo[1] > self::MAX_DIMENSION) {
             throw new RuntimeException('The uploaded picture is not a supported image or exceeds the allowed dimensions.');
@@ -92,7 +93,7 @@ class PictureStorageService
         $this->ensureMemory((int) $imageInfo[0], (int) $imageInfo[1]);
 
         $image = @imagecreatefromstring((string) file_get_contents($realPath));
-        if (!$image instanceof \GdImage) {
+        if (! $image instanceof \GdImage) {
             throw new RuntimeException('The uploaded picture could not be decoded.');
         }
 
@@ -109,14 +110,14 @@ class PictureStorageService
         $filename = (string) Str::uuid().'.'.self::MIME_EXTENSIONS[$mime];
         $path = $folder.'/'.$filename;
         $thumbnailPath = $folder.'/thumbnails/'.$filename;
-        $disk = Storage::disk('public');
+        $disk = $this->mediaDisk();
 
         try {
-            if (!$disk->put($path, $this->encode($image, $mime))) {
+            if (! $disk->put($path, $this->encode($image, $mime))) {
                 throw new RuntimeException('The uploaded picture could not be saved.');
             }
 
-            if (!$disk->put($thumbnailPath, $this->thumbnail($image, $mime))) {
+            if (! $disk->put($thumbnailPath, $this->thumbnail($image, $mime))) {
                 throw new RuntimeException('The picture thumbnail could not be saved.');
             }
         } catch (\Throwable $exception) {
@@ -129,7 +130,7 @@ class PictureStorageService
 
     public function url(?string $path, string $legacyFolder, bool $thumbnail = false): ?string
     {
-        if (!$path) {
+        if (! $path) {
             return null;
         }
 
@@ -142,25 +143,23 @@ class PictureStorageService
             return asset($path);
         }
 
-        if (!str_contains($path, '/')) {
+        if (! str_contains($path, '/')) {
             return asset('uploads/'.$legacyFolder.'/'.basename($path));
         }
 
         if ($thumbnail) {
             $thumbnailPath = dirname($path).'/thumbnails/'.basename($path);
-            if (Storage::disk('public')->exists($thumbnailPath)) {
+            if ($this->mediaDisk()->exists($thumbnailPath)) {
                 $path = $thumbnailPath;
             }
         }
 
-        // asset() follows the address the browser used (localhost, LAN IP, hostname).
-        // Storage::url() is built from APP_URL, so other PCs on the network got broken images.
-        return asset('storage/'.$path);
+        return $this->mediaDisk()->url($path);
     }
 
     public function delete(?string $path, string $legacyFolder): void
     {
-        if (!$path) {
+        if (! $path) {
             return;
         }
 
@@ -175,16 +174,25 @@ class PictureStorageService
             return;
         }
 
-        if (!str_contains($path, '/')) {
+        if (! str_contains($path, '/')) {
             File::delete(public_path('uploads/'.$legacyFolder.'/'.basename($path)));
 
             return;
         }
 
-        Storage::disk('public')->delete([
+        $this->mediaDisk()->delete([
             $path,
             dirname($path).'/thumbnails/'.basename($path),
         ]);
+    }
+
+    /**
+     * Keep the local public disk as the default while allowing production
+     * deployments to point generated media at a persistent or object disk.
+     */
+    private function mediaDisk()
+    {
+        return Storage::disk((string) config('filesystems.media_disk', 'public'));
     }
 
     private function ensureMemory(int $width, int $height): void
@@ -224,7 +232,7 @@ class PictureStorageService
 
     private function applyExifOrientation(\GdImage $image, string $mime, string $path): \GdImage
     {
-        if ($mime !== 'image/jpeg' || !function_exists('exif_read_data')) {
+        if ($mime !== 'image/jpeg' || ! function_exists('exif_read_data')) {
             return $image;
         }
 
@@ -258,7 +266,7 @@ class PictureStorageService
         };
         $contents = ob_get_clean();
 
-        if (!$saved || !is_string($contents)) {
+        if (! $saved || ! is_string($contents)) {
             throw new RuntimeException('The picture format cannot be re-encoded by this GD build.');
         }
 

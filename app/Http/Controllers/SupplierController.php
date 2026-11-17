@@ -8,6 +8,7 @@ use App\Http\Requests\StoreSupplierPaymentRequest;
 use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Services\SupplierDeletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -106,9 +107,9 @@ class SupplierController extends Controller
         return redirect()->route('suppliers.show', $supplier)->with('success', 'تم تحديث بيانات المورد.');
     }
 
-    public function destroy(Supplier $supplier): RedirectResponse
+    public function destroy(Supplier $supplier, SupplierDeletionService $deletion): RedirectResponse
     {
-        $supplier->delete();
+        $deletion->delete($supplier);
 
         return redirect()->route('suppliers.index')->with('success', 'تم حذف المورد.');
     }

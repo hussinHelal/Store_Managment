@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -37,7 +38,7 @@ class ApiV1SupplierWriteTest extends TestCase
             ->assertJsonPath('data.name', 'North Supply')
             ->assertJsonPath('data.opening_balance', '125.25')
             ->assertJsonPath('data.balance', '125.25')
-            ->assertJsonMissingPath('data.notes');
+            ->assertJsonPath('data.notes', 'Private note');
         $supplierId = $created->json('data.id');
 
         $this->withToken($token)
@@ -67,6 +68,67 @@ class ApiV1SupplierWriteTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame(0, Supplier::query()->count());
+    }
+
+    public function test_supplier_update_without_notes_preserves_the_existing_private_note(): void
+    {
+        $token = $this->tokenWithSupplierManagePermission();
+        $supplier = Supplier::query()->create([
+            'name' => 'North Supply',
+            'opening_balance' => '10.00',
+            'balance' => '10.00',
+            'notes' => 'Keep this note',
+        ]);
+
+        $this->withToken($token)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->putJson('/api/v1/suppliers/'.$supplier->id, [
+                'name' => 'North Supply Updated',
+                'opening_balance' => '10.00',
+            ])
+            ->assertOk();
+
+        $this->assertSame('Keep this note', $supplier->fresh()->notes);
+    }
+
+    public function test_supplier_delete_cannot_cascade_financial_history(): void
+    {
+        $token = $this->tokenWithSupplierManagePermission();
+        $supplier = Supplier::query()->create([
+            'name' => 'North Supply',
+            'opening_balance' => '10.00',
+            'balance' => '10.00',
+        ]);
+        $purchaseId = DB::table('purchases')->insertGetId([
+            'supplier_id' => $supplier->id,
+            'invoice_number' => 'SUP-KEEP-001',
+            'purchase_date' => '2026-11-17',
+            'payment_type' => 'credit',
+            'total_amount' => '50.00',
+            'paid_amount' => '0.00',
+            'remaining' => '50.00',
+            'status' => 'unpaid',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('supplier_payments')->insert([
+            'supplier_id' => $supplier->id,
+            'purchase_id' => $purchaseId,
+            'receipt_number' => 'PAY-KEEP-001',
+            'amount' => '5.00',
+            'payment_date' => '2026-11-17',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->withToken($token)
+            ->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->deleteJson('/api/v1/suppliers/'.$supplier->id)
+            ->assertUnprocessable();
+
+        $this->assertDatabaseHas('suppliers', ['id' => $supplier->id]);
+        $this->assertDatabaseHas('purchases', ['id' => $purchaseId]);
+        $this->assertDatabaseHas('supplier_payments', ['receipt_number' => 'PAY-KEEP-001']);
     }
 
     private function tokenWithSupplierManagePermission(): string

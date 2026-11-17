@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\MaintenanceIndexRequest;
 use App\Http\Requests\Api\CreateMaintenanceRequest;
+use App\Http\Requests\Api\MaintenanceIndexRequest;
 use App\Http\Requests\Api\UpdateMaintenanceRequest;
 use App\Http\Resources\Api\MaintenanceResource;
 use App\Models\Maintenance;
@@ -20,7 +20,7 @@ class MaintenanceController
         $filters = $request->validated();
         $term = trim((string) ($filters['q'] ?? ''));
         $query = Maintenance::query()->select([
-            'id', 'name', 'owner', 'phone', 'address', 'description', 'status', 'requested_date', 'completed_date',
+            'id', 'name', 'owner', 'phone', 'address', 'description', 'notes', 'status', 'requested_date', 'completed_date',
         ]);
 
         if ($term !== '') {

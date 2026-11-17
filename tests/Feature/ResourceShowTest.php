@@ -139,7 +139,11 @@ class ResourceShowTest extends TestCase
 
         $this->actingAs($admin, 'web')->get(route('products.index'))
             ->assertOk()
-            ->assertSee(asset('storage/products/thumbnails/catalog-test.png'), false);
+            ->assertSee('/media/products/'.$product->id.'/image?thumbnail=1', false);
+
+        $this->get(route('media.products.image', ['product' => $product, 'thumbnail' => 1]))
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
     public function test_product_create_and_edit_pages_use_shared_barcode_scanner(): void
