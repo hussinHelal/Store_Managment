@@ -57,6 +57,8 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
@@ -327,7 +329,7 @@ private enum class StoreTab(val label: String, val permission: String?, val icon
     More("المزيد", null, Icons.Filled.MoreHoriz),
 }
 
-private enum class MoreSection { Home, Categories, Customers, Sales, SalesReports, Suppliers, Installments, Wallets, WalletCashier, ProductCashier, Damaged, Notifications, Maintenance, BranchStock, Devices, Profile, Backup }
+private enum class MoreSection { Home, Categories, Customers, Sales, SalesReports, Suppliers, Installments, Wallets, WalletCashier, ProductCashier, Damaged, Notifications, Maintenance, BranchStock, Inventory, Devices, UsedPhones, Appointments, Diagnostics, Profile, Backup }
 internal enum class CashierAction { Settle, Reverse }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -362,6 +364,12 @@ private fun StoreHomeScreen(
     val trackedDevicesState by storeViewModel.trackedDevices.collectAsStateWithLifecycle()
     val branchStockState by storeViewModel.branchStock.collectAsStateWithLifecycle()
     val stockMovementsState by storeViewModel.stockMovements.collectAsStateWithLifecycle()
+    val branchesState by storeViewModel.branches.collectAsStateWithLifecycle()
+    val stockTransfersState by storeViewModel.stockTransfers.collectAsStateWithLifecycle()
+    val stocktakesState by storeViewModel.stocktakes.collectAsStateWithLifecycle()
+    val stocktakeDetail by storeViewModel.stocktakeDetail.collectAsStateWithLifecycle()
+    val usedPhonesState by storeViewModel.usedPhones.collectAsStateWithLifecycle()
+    val appointmentsState by storeViewModel.appointments.collectAsStateWithLifecycle()
     val productPage by storeViewModel.productPage.collectAsStateWithLifecycle()
     val productDetails by storeViewModel.productDetails.collectAsStateWithLifecycle()
     val invoiceDetails by storeViewModel.invoiceDetails.collectAsStateWithLifecycle()
@@ -461,7 +469,11 @@ private fun StoreHomeScreen(
             MoreSection.Notifications -> "الإشعارات"
             MoreSection.Maintenance -> "الصيانة"
             MoreSection.BranchStock -> "مخزون الفروع"
+            MoreSection.Inventory -> "الفروع والتحويلات والجرد"
             MoreSection.Devices -> "\u0627\u0644\u0623\u062c\u0647\u0632\u0629 \u0627\u0644\u0645\u062a\u062a\u0628\u0639\u0629"
+            MoreSection.UsedPhones -> "الموبايلات المستعملة"
+            MoreSection.Appointments -> "مواعيد التركيب"
+            MoreSection.Diagnostics -> "تشخيص الأجهزة"
             MoreSection.Profile -> "حسابي"
             MoreSection.Backup -> "النسخ الاحتياطي"
             MoreSection.Home -> "المزيد"
@@ -638,7 +650,18 @@ private fun StoreHomeScreen(
                 MoreSection.ProductCashier -> storeViewModel.searchCashierProducts("")
                 MoreSection.Damaged -> storeViewModel.refreshDamagedItems(query, damagedStatusFilter)
                 MoreSection.BranchStock -> storeViewModel.refreshBranchStock(query, "page.stock_movements.view" in user.permissions)
+                MoreSection.Inventory -> {
+                    if ("page.branch_stock.view" in user.permissions) {
+                        storeViewModel.refreshBranches()
+                        storeViewModel.refreshBranchStock(includeMovements = "page.stock_movements.view" in user.permissions)
+                        storeViewModel.refreshStockTransfers()
+                        storeViewModel.refreshProducts(null)
+                    }
+                    if ("page.stocktake.view" in user.permissions) storeViewModel.refreshStocktakes()
+                }
                 MoreSection.Devices -> { storeViewModel.refreshTrackedDevices(query); storeViewModel.refreshProducts(null) }
+                MoreSection.UsedPhones -> storeViewModel.refreshUsedPhones(query)
+                MoreSection.Appointments -> storeViewModel.refreshAppointments(query)
                 else -> Unit
             }
         }
@@ -891,6 +914,7 @@ private fun StoreHomeScreen(
                 selectedCategoryId = selectedProductCategoryId,
                 inStockFilter = productStockFilter,
                 canManage = "page.products.manage" in user.permissions,
+                canViewMovements = "page.stock_movements.view" in user.permissions,
                 onQueryChange = { searchQuery = it },
                 onCategoryChange = { selectedProductCategoryId = it },
                 onStockFilterChange = { productStockFilter = it },
@@ -988,8 +1012,12 @@ private fun StoreHomeScreen(
                     canViewMaintenance = "page.maintenance.view" in user.permissions,
                     canViewDamaged = "page.damaged.view" in user.permissions,
                     canViewBranchStock = "page.branch_stock.view" in user.permissions,
+                    canViewInventory = "page.branch_stock.view" in user.permissions || "page.stocktake.view" in user.permissions,
                     canViewDevices = "page.devices.view" in user.permissions,
+                    canViewUsedPhones = "page.used_phones.view" in user.permissions,
+                    canViewAppointments = "page.installations.view" in user.permissions,
                     canViewBackup = "page.backup.manage" in user.permissions,
+                    canViewDiagnostics = "page.diagnostics.view" in user.permissions,
                     onOpenProfile = {
                         moreSectionName = MoreSection.Profile.name
                         searchQuery = ""
@@ -1054,14 +1082,29 @@ private fun StoreHomeScreen(
                         storeViewModel.refreshDamagedItems(null)
                     },
                     onOpenDevices = { moreSectionName = MoreSection.Devices.name; searchQuery = ""; storeViewModel.refreshTrackedDevices(); storeViewModel.refreshProducts(null) },
+                    onOpenUsedPhones = { moreSectionName = MoreSection.UsedPhones.name; searchQuery = ""; storeViewModel.refreshUsedPhones() },
+                    onOpenAppointments = { moreSectionName = MoreSection.Appointments.name; searchQuery = ""; storeViewModel.refreshAppointments() },
                     onOpenBranchStock = {
                         moreSectionName = MoreSection.BranchStock.name
                         searchQuery = ""
                         storeViewModel.refreshBranchStock(includeMovements = "page.stock_movements.view" in user.permissions)
                     },
+                    onOpenInventory = {
+                        moreSectionName = MoreSection.Inventory.name
+                        searchQuery = ""
+                        if ("page.branch_stock.view" in user.permissions) {
+                            storeViewModel.refreshBranches()
+                            storeViewModel.refreshBranchStock(includeMovements = "page.stock_movements.view" in user.permissions)
+                            storeViewModel.refreshStockTransfers()
+                            storeViewModel.refreshProducts(null)
+                        }
+                        if ("page.stocktake.view" in user.permissions) storeViewModel.refreshStocktakes()
+                    },
                     onOpenBackup = { moreSectionName = MoreSection.Backup.name; searchQuery = "" },
+                    onOpenDiagnostics = { moreSectionName = MoreSection.Diagnostics.name; searchQuery = "" },
                     modifier = Modifier.padding(padding),
                 )
+                MoreSection.Diagnostics -> HardwareDiagnosticsScreen(Modifier.padding(padding))
                 MoreSection.Categories -> CategoryListScreen(
                     categories = categories,
                     page = categoryPage,
@@ -1260,6 +1303,53 @@ private fun StoreHomeScreen(
                     onSave = storeViewModel::saveTrackedDevice,
                     onDelete = storeViewModel::deleteTrackedDevice,
                     onLoadMore = { status -> storeViewModel.loadMoreTrackedDevices(searchQuery.ifBlank { null }, status) },
+                    modifier = Modifier.padding(padding),
+                )
+                MoreSection.Inventory -> InventoryOperationsScreen(
+                    branches = branchesState,
+                    stock = branchStockState,
+                    movements = stockMovementsState,
+                    transfers = stockTransfersState,
+                    stocktakes = stocktakesState,
+                    stocktakeDetail = stocktakeDetail,
+                    products = products,
+                    categories = categories,
+                    canViewBranchStock = "page.branch_stock.view" in user.permissions,
+                    canManageBranchStock = "page.branch_stock.manage" in user.permissions,
+                    canViewMovements = "page.stock_movements.view" in user.permissions,
+                    canManageMovements = "page.stock_movements.manage" in user.permissions,
+                    canViewStocktakes = "page.stocktake.view" in user.permissions,
+                    canManageStocktakes = "page.stocktake.manage" in user.permissions,
+                    canApprove = "page.stocktake.approve" in user.permissions,
+                    onRefresh = { query, branchId, categoryId, availability -> storeViewModel.refreshBranchStock(query, "page.stock_movements.view" in user.permissions, branchId, categoryId, availability) },
+                    onRefreshTransfers = storeViewModel::refreshStockTransfers,
+                    onRefreshStocktakes = storeViewModel::refreshStocktakes,
+                    onAdjustStock = storeViewModel::adjustBranchStock,
+                    onReorder = storeViewModel::updateReorderLevel,
+                    onSaveBranch = storeViewModel::saveBranch,
+                    onDeleteBranch = storeViewModel::deleteBranch,
+                    onSaveTransfer = storeViewModel::saveStockTransfer,
+                    onTransferAction = storeViewModel::changeStockTransfer,
+                    onStartStocktake = storeViewModel::startStocktake,
+                    onLoadStocktake = storeViewModel::loadStocktake,
+                    onCount = storeViewModel::countStocktake,
+                    onStocktakeAction = storeViewModel::changeStocktake,
+                    modifier = Modifier.padding(padding),
+                )
+                MoreSection.UsedPhones -> UsedPhonesScreen(
+                    page = usedPhonesState,
+                    canManage = "page.used_phones.manage" in user.permissions,
+                    onRefresh = storeViewModel::refreshUsedPhones,
+                    onSave = { id, input, imageUri -> storeViewModel.saveUsedPhone(id, input, imageUri, context.contentResolver, context.cacheDir) },
+                    onDelete = storeViewModel::deleteUsedPhone,
+                    modifier = Modifier.padding(padding),
+                )
+                MoreSection.Appointments -> InstallationAppointmentsScreen(
+                    page = appointmentsState,
+                    canManage = "page.installations.manage" in user.permissions,
+                    onRefresh = storeViewModel::refreshAppointments,
+                    onSave = storeViewModel::saveAppointment,
+                    onDelete = storeViewModel::deleteAppointment,
                     modifier = Modifier.padding(padding),
                 )
             }
@@ -1966,7 +2056,7 @@ private fun SupplierDetailsSheet(
     onCreateReceipt: (Long, PurchaseReceiptInputDto, String) -> Unit,
 ) {
     var receiptOpen by rememberSaveable(cached.id) { mutableStateOf(false) }
-    var search by rememberSaveable(cached.id) { mutableStateOf("") }
+    var productName by rememberSaveable(cached.id) { mutableStateOf("") }
     var selectedProductId by rememberSaveable(cached.id) { mutableStateOf<Long?>(null) }
     var quantity by rememberSaveable(cached.id) { mutableStateOf("1") }
     var unitCost by rememberSaveable(cached.id) { mutableStateOf("") }
@@ -2027,20 +2117,26 @@ private fun SupplierDetailsSheet(
             text = {
                 Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(purchaseDate, { purchaseDate = it }, label = { Text("تاريخ الفاتورة (سنة-شهر-يوم)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    OutlinedTextField(search, {
-                        search = it
-                        onSearchReceiptProducts(it.ifBlank { null })
-                    }, label = { Text("بحث عن منتج") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     Box {
-                        OutlinedButton(onClick = { productMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text(selectedProduct?.name ?: "اختر المنتج")
-                        }
+                        OutlinedTextField(
+                            value = productName.ifBlank { selectedProduct?.name.orEmpty() },
+                            onValueChange = { value ->
+                                productName = value
+                                selectedProductId = null
+                                onSearchReceiptProducts(value.ifBlank { null })
+                                productMenuOpen = true
+                            },
+                            label = { Text("اسم المنتج (اكتب الاسم أو ابحث في المنتجات)") },
+                            modifier = Modifier.fillMaxWidth(), singleLine = true,
+                            trailingIcon = { IconButton(onClick = { onSearchReceiptProducts(productName.ifBlank { null }); productMenuOpen = true }) { Icon(Icons.Filled.Search, contentDescription = "بحث") } },
+                        )
                         DropdownMenu(expanded = productMenuOpen, onDismissRequest = { productMenuOpen = false }) {
                             receiptProducts.items.forEach { product ->
                                 DropdownMenuItem(
                                     text = { Text("${product.name} — ${product.costPrice ?: "التكلفة غير محددة"}") },
                                     onClick = {
                                         selectedProductId = product.id
+                                        productName = product.name
                                         unitCost = product.costPrice.orEmpty()
                                         productMenuOpen = false
                                     },
@@ -2063,7 +2159,7 @@ private fun SupplierDetailsSheet(
             },
             confirmButton = {
                 TextButton(
-                    enabled = selectedProduct != null && quantity.toIntOrNull()?.let { it > 0 } == true && unitCost.toBigDecimalOrNull() != null && (paymentType == "cash" || paidAmount.toBigDecimalOrNull() != null),
+                    enabled = (selectedProduct != null || productName.isNotBlank()) && quantity.toIntOrNull()?.let { it > 0 } == true && unitCost.toBigDecimalOrNull() != null && (paymentType == "cash" || paidAmount.toBigDecimalOrNull() != null),
                     onClick = {
                         val qty = quantity.toInt()
                         val total = unitCost.toBigDecimal().multiply(qty.toBigDecimal()).setScale(2, java.math.RoundingMode.HALF_UP)
@@ -2073,7 +2169,7 @@ private fun SupplierDetailsSheet(
                                 purchaseDate = purchaseDate,
                                 paymentType = paymentType,
                                 paidAmount = if (paymentType == "cash") total.toPlainString() else paidAmount,
-                                items = listOf(PurchaseReceiptLineInputDto(selectedProduct!!.id, qty, unitCost)),
+                                items = listOf(PurchaseReceiptLineInputDto(productId = selectedProduct?.id, productName = productName.ifBlank { selectedProduct?.name }, quantity = qty, unitCost = unitCost)),
                                 notes = notes.ifBlank { null },
                             ),
                             UUID.randomUUID().toString(),
@@ -2364,8 +2460,12 @@ private fun MoreHubScreen(
     canViewMaintenance: Boolean,
     canViewDamaged: Boolean,
     canViewBranchStock: Boolean,
+    canViewInventory: Boolean,
     canViewDevices: Boolean,
+    canViewUsedPhones: Boolean,
+    canViewAppointments: Boolean,
     canViewBackup: Boolean,
+    canViewDiagnostics: Boolean,
     onOpenProfile: () -> Unit,
     onOpenCategories: () -> Unit,
     onOpenCustomers: () -> Unit,
@@ -2380,8 +2480,12 @@ private fun MoreHubScreen(
     onOpenMaintenance: () -> Unit,
     onOpenDamaged: () -> Unit,
     onOpenBranchStock: () -> Unit,
+    onOpenInventory: () -> Unit,
     onOpenDevices: () -> Unit,
+    onOpenUsedPhones: () -> Unit,
+    onOpenAppointments: () -> Unit,
     onOpenBackup: () -> Unit,
+    onOpenDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -2405,7 +2509,10 @@ private fun MoreHubScreen(
             if (canViewProductCashier) MoreActionRow("نقطة البيع", "بحث المنتجات والسلة والتحصيل", Icons.Filled.Store, onOpenProductCashier)
             if (canViewDamaged) MoreActionRow("الهالك", "تسجيل التالف وعكس القيود بالسبب", Icons.Filled.Delete, onOpenDamaged)
             if (canViewBranchStock) MoreActionRow("مخزون الفروع", "أرصدة الفروع وحركات المخزون", Icons.Filled.Inventory2, onOpenBranchStock)
+            if (canViewInventory) MoreActionRow("الفروع والتحويلات والجرد", "إدارة الفروع، إرسال واستلام التحويلات، جرد المخزون واعتماده", Icons.Filled.Inventory2, onOpenInventory)
             if (canViewDevices) MoreActionRow("\u0627\u0644\u0623\u062c\u0647\u0632\u0629 \u0627\u0644\u0645\u062a\u062a\u0628\u0639\u0629", "IMEI / Serial", Icons.Filled.Inventory2, onOpenDevices)
+            if (canViewUsedPhones) MoreActionRow("الموبايلات المستعملة", "بيانات الشراء والحالة والسعر والصور", Icons.Filled.PhoneAndroid, onOpenUsedPhones)
+            if (canViewAppointments) MoreActionRow("مواعيد التركيب", "حجز المواعيد وتعيين الفني وتحديث الحالة", Icons.Filled.Event, onOpenAppointments)
             if (canViewMaintenance) MoreActionRow("الصيانة", "طلبات الصيانة وحالتها", Icons.Filled.Build, onOpenMaintenance)
         }
         if (canViewNotifications) {
@@ -2418,6 +2525,7 @@ private fun MoreHubScreen(
             Text("الحساب", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             MoreActionRow("حسابي", "الملف الشخصي والصلاحيات", Icons.Filled.AccountCircle, onOpenProfile)
             if (canViewBackup) MoreActionRow("النسخ الاحتياطي", "تصدير أو استيراد نسخة من بيانات المتجر", Icons.Filled.Inventory2, onOpenBackup)
+            if (canViewDiagnostics) MoreActionRow("تشخيص الأجهزة", "اختبار دعم الكاميرا والباركود والطباعة", Icons.Filled.Build, onOpenDiagnostics)
         }
     }
 }
@@ -2992,7 +3100,8 @@ private fun SalesReportScreen(
                 DetailLine(label, row.invoiceCount.toString())
             }
             Text("الخصومات ووسائل الدفع غير مسجلة بشكل مستقل في النظام الحالي.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } ?: if (!state.isLoading && state.error == null) {
+        }
+        if (state.report == null && !state.isLoading && state.error == null) {
             EmptyState("اختر الفترة ثم اعرض التقرير")
         }
     }
@@ -3498,6 +3607,7 @@ private fun InvoiceCreateDialog(
     }
     var barcodeStatus by remember { mutableStateOf<String?>(null) }
     var isBarcodeBusy by remember { mutableStateOf(false) }
+    var manualBarcode by remember { mutableStateOf("") }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val scannerOptions = remember {
@@ -3575,6 +3685,7 @@ private fun InvoiceCreateDialog(
                         selectedIds = nextIds
                         quantities = nextQuantities
                         productFilter = ""
+                        manualBarcode = ""
                         barcodeStatus = "تمت إضافة ${cachedProduct.name} إلى الفاتورة."
                     }
                 }
@@ -3623,6 +3734,21 @@ private fun InvoiceCreateDialog(
                     label = { Text("ملاحظات") },
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = manualBarcode,
+                        onValueChange = { manualBarcode = it.normalizeArabicDigits() },
+                        label = { Text("أدخل أو امسح الباركود") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { if (!isBarcodeBusy) coroutineScope.launch { lookupBarcode(manualBarcode) } }),
+                        enabled = !isBarcodeBusy,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Button(onClick = { coroutineScope.launch { lookupBarcode(manualBarcode) } }, enabled = !isBarcodeBusy && manualBarcode.isNotBlank()) {
+                        Text(if (isBarcodeBusy) "جارٍ البحث" else "إضافة")
+                    }
+                }
                 Text("المنتجات", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Text("سيعتمد السعر والمخزون النهائيان على تحقق الخادم.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {

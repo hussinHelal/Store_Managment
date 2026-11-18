@@ -3,8 +3,6 @@
 @section('content')
 <div class="container-fluid py-3" dir="rtl">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div><h1 class="h3 mb-1">جرد المخزون</h1><p class="text-body-secondary mb-0">ابدأ جرداً محفوظاً على رصيد لحظي ثم راجع الفروق قبل اعتمادها</p></div><a class="btn btn-outline-secondary" href="{{ route('branch_stock.index') }}">مخزون الفروع</a></div>
-    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
-    @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     @can('page.stocktake.manage')
     <form class="card mb-3" method="post" action="{{ route('stocktake.store') }}">@csrf<input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}"><div class="card-body"><div class="row g-3 align-items-end"><div class="col-12"><h2 class="h5 mb-0">بدء جرد جديد</h2></div>
         <div class="col-md-4"><label class="form-label" for="take-branch">الفرع</label><select class="form-select" id="take-branch" name="branch_id" required><option value="">اختر الفرع</option>@foreach($branches as $branch)<option value="{{ $branch->id }}">{{ $branch->name }}</option>@endforeach</select></div>

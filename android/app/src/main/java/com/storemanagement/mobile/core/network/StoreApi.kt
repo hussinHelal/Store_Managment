@@ -14,6 +14,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Part
 import retrofit2.http.Multipart
+import retrofit2.http.PartMap
 import retrofit2.http.Streaming
 
 interface StoreApi {
@@ -439,8 +440,13 @@ interface StoreApi {
     @GET("v1/branch-stock")
     suspend fun branchStock(
         @Query("q") query: String? = null,
+        @Query("branch_id") branchId: Long? = null,
+        @Query("category_id") categoryId: Long? = null,
+        @Query("availability") availability: String? = null,
         @Query("per_page") perPage: Int = 50,
     ): ApiPage<BranchStockDto>
+
+    @PUT("v1/branch-stock/{id}/reorder-level") suspend fun updateReorderLevel(@Path("id") id: Long, @Body body: ReorderLevelInputDto): ApiEnvelope<BranchStockDto>
 
     @GET("v1/stock-movements")
     suspend fun stockMovements(@Query("per_page") perPage: Int = 50): ApiPage<StockMovementDto>
@@ -450,4 +456,35 @@ interface StoreApi {
         @Header("Idempotency-Key") key: String,
         @Body body: StockAdjustmentInputDto,
     ): StockAdjustmentResponseDto
+
+    @GET("v1/branches") suspend fun branches(): ApiPage<BranchDto>
+    @POST("v1/branches") suspend fun createBranch(@Body body: BranchInputDto): ApiEnvelope<BranchDto>
+    @PUT("v1/branches/{id}") suspend fun updateBranch(@Path("id") id: Long, @Body body: BranchInputDto): ApiEnvelope<BranchDto>
+    @DELETE("v1/branches/{id}") suspend fun deleteBranch(@Path("id") id: Long): Response<Unit>
+
+    @GET("v1/stock-transfers") suspend fun stockTransfers(@Query("branch_id") branchId: Long? = null, @Query("status") status: String? = null): ApiPage<StockTransferDto>
+    @POST("v1/stock-transfers") suspend fun createStockTransfer(@Header("Idempotency-Key") key: String, @Body body: StockTransferInputDto): ApiEnvelope<StockTransferDto>
+    @PUT("v1/stock-transfers/{id}") suspend fun updateStockTransfer(@Path("id") id: Long, @Header("Idempotency-Key") key: String, @Body body: StockTransferInputDto): ApiEnvelope<StockTransferDto>
+    @POST("v1/stock-transfers/{id}/send") suspend fun sendStockTransfer(@Path("id") id: Long, @Header("Idempotency-Key") key: String): ApiEnvelope<StockTransferDto>
+    @POST("v1/stock-transfers/{id}/receive") suspend fun receiveStockTransfer(@Path("id") id: Long, @Header("Idempotency-Key") key: String): ApiEnvelope<StockTransferDto>
+    @POST("v1/stock-transfers/{id}/cancel") suspend fun cancelStockTransfer(@Path("id") id: Long, @Header("Idempotency-Key") key: String, @Body body: StocktakeCancelInputDto): ApiEnvelope<StockTransferDto>
+    @DELETE("v1/stock-transfers/{id}") suspend fun deleteStockTransfer(@Path("id") id: Long, @Header("Idempotency-Key") key: String): Response<Unit>
+
+    @GET("v1/stocktakes") suspend fun stocktakes(@Query("branch_id") branchId: Long? = null, @Query("status") status: String? = null): ApiPage<StocktakeDto>
+    @GET("v1/stocktakes/{id}") suspend fun stocktake(@Path("id") id: Long): ApiEnvelope<StocktakeDto>
+    @POST("v1/stocktakes") suspend fun createStocktake(@Header("Idempotency-Key") key: String, @Body body: StocktakeInputDto): ApiEnvelope<StocktakeDto>
+    @PUT("v1/stocktakes/{id}/items/{itemId}") suspend fun countStocktakeItem(@Path("id") id: Long, @Path("itemId") itemId: Long, @Header("Idempotency-Key") key: String, @Body body: StocktakeCountInputDto): ApiEnvelope<StocktakeCountResponseDto>
+    @POST("v1/stocktakes/{id}/review") suspend fun reviewStocktake(@Path("id") id: Long, @Header("Idempotency-Key") key: String): ApiEnvelope<StocktakeDto>
+    @POST("v1/stocktakes/{id}/approve") suspend fun approveStocktake(@Path("id") id: Long, @Header("Idempotency-Key") key: String): ApiEnvelope<StocktakeDto>
+    @POST("v1/stocktakes/{id}/cancel") suspend fun cancelStocktake(@Path("id") id: Long, @Header("Idempotency-Key") key: String, @Body body: StocktakeCancelInputDto): ApiEnvelope<StocktakeDto>
+
+    @GET("v1/used-phones") suspend fun usedPhones(@Query("search") search: String? = null, @Query("status") status: String? = null, @Query("condition") condition: String? = null, @Query("per_page") perPage: Int = 30): ApiPage<UsedPhoneDto>
+    @Multipart @POST("v1/used-phones") suspend fun createUsedPhone(@Header("Idempotency-Key") key: String, @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>, @Part image: MultipartBody.Part? = null): ApiEnvelope<UsedPhoneDto>
+    @Multipart @PUT("v1/used-phones/{id}") suspend fun updateUsedPhone(@Path("id") id: Long, @Header("Idempotency-Key") key: String, @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>, @Part image: MultipartBody.Part? = null): ApiEnvelope<UsedPhoneDto>
+    @DELETE("v1/used-phones/{id}") suspend fun deleteUsedPhone(@Path("id") id: Long, @Header("Idempotency-Key") key: String): Response<Unit>
+
+    @GET("v1/installation-appointments") suspend fun installationAppointments(@Query("search") search: String? = null, @Query("status") status: String? = null, @Query("date") date: String? = null, @Query("per_page") perPage: Int = 30): ApiPage<InstallationAppointmentDto>
+    @POST("v1/installation-appointments") suspend fun createInstallationAppointment(@Header("Idempotency-Key") key: String, @Body body: InstallationAppointmentInputDto): ApiEnvelope<InstallationAppointmentDto>
+    @PUT("v1/installation-appointments/{id}") suspend fun updateInstallationAppointment(@Path("id") id: Long, @Header("Idempotency-Key") key: String, @Body body: InstallationAppointmentInputDto): ApiEnvelope<InstallationAppointmentDto>
+    @DELETE("v1/installation-appointments/{id}") suspend fun deleteInstallationAppointment(@Path("id") id: Long, @Header("Idempotency-Key") key: String): Response<Unit>
 }

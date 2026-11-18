@@ -11,6 +11,16 @@
 {{-- footer end --}}
 
 <script>
+    document.querySelectorAll('[data-auto-dismiss]').forEach((alertElement) => {
+        const timeout = Number(alertElement.dataset.autoDismiss);
+        if (!Number.isFinite(timeout) || timeout <= 0) return;
+        window.setTimeout(() => {
+            if (!alertElement.isConnected) return;
+            if (window.bootstrap?.Alert) window.bootstrap.Alert.getOrCreateInstance(alertElement).close();
+            else alertElement.remove();
+        }, timeout);
+    });
+
     // Helper to show Bootstrap alert in the dynamic alerts container
     window.showBootstrapAlert = function(message, type = 'danger', timeout = 8000) {
         try {

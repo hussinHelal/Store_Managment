@@ -79,4 +79,36 @@ class BranchStockPagesTest extends TestCase
             'name' => 'الفرع الرئيسي', 'code' => 'MAIN', 'is_active' => 0,
         ])->assertSessionHasErrors('is_active');
     }
+
+    public function test_stocktake_review_page_keeps_count_fields_open_for_corrections(): void
+    {
+        $product = products::query()->create(['name' => 'Reviewable stock item', 'price' => '20.00', 'description' => 'Test', 'stock' => 5]);
+        $user = $this->admin;
+        $take = app(\App\Services\StocktakeService::class)->start([
+            'branch_id' => app(CurrentBranch::class)->id($user),
+            'scope' => 'all',
+        ], $user, (string) Str::uuid());
+        $item = $take->items->firstOrFail();
+        $stocktakes = app(\App\Services\StocktakeService::class);
+        $stocktakes->count($take, $item->id, 4);
+        $stocktakes->review($take);
+
+        $response = $this->actingAs($user, 'web')->get(route('stocktake.show', $take));
+        $response->assertOk()->assertSee('name="counted_qty"', false)->assertSee('name="note"', false)->assertSee('-1');
+        $this->assertSame(-1, (int) $item->fresh()->difference);
+
+        $this->put(route('stocktake.count', [$take, $item->id]), ['counted_qty' => 5, 'note' => 'إعادة العد'])
+            ->assertRedirect();
+        $this->assertSame(0, (int) $item->fresh()->difference);
+    }
+
+    public function test_branch_stock_success_flash_is_rendered_only_once(): void
+    {
+        $response = $this->actingAs($this->admin, 'web')
+            ->withSession(['success' => 'تم تحديث أرصدة الفرع'])
+            ->get(route('branch_stock.index'));
+
+        $response->assertOk();
+        $this->assertSame(1, substr_count($response->getContent(), 'تم تحديث أرصدة الفرع'));
+    }
 }

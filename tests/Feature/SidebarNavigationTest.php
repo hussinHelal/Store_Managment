@@ -40,6 +40,10 @@ class SidebarNavigationTest extends TestCase
             ->assertSee(route('branch_stock.transfers.index'), false)
             ->assertSee(route('devices.index'), false)
             ->assertSee(route('used_phones.index'), false)
-            ->assertSee(route('installations.index'), false);
+            ->assertSee(route('installations.index'), false)
+            ->assertSee(route('diagnostics.index'), false);
+
+        $this->actingAs($user, 'web')->get(route('diagnostics.index'))->assertOk()
+            ->assertSee('تشخيص الأجهزة')->assertSee('navigator.mediaDevices');
     }
 }

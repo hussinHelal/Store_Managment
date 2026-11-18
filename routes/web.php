@@ -70,6 +70,7 @@ Route::middleware(['auth:sanctum', 'page.access'])->group(function () {
     Route::delete('/personal-debts/{personalDebt}', [PersonalDebtOperationsController::class, 'destroy'])->can('delete-installments')
         ->name('personal-debts.destroy');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::view('/diagnostics', 'diagnostics.index')->name('diagnostics.index');
     Route::resource('/customers', CustomersController::class)->except(['store', 'update', 'destroy']);
     Route::post('/customers', [CustomersController::class, 'store'])->can('create-customers')
         ->name('customers.store');

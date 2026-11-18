@@ -11,20 +11,16 @@
         </div>
     </div>
 
-    @if(session('success'))<div class="alert alert-success" role="status">{{ session('success') }}</div>@endif
-    @if(session('error'))<div class="alert alert-danger" role="alert">{{ session('error') }}</div>@endif
-    @if($errors->any())<div class="alert alert-danger"><strong>تعذر حفظ البيانات:</strong><ul class="mb-0 mt-1">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-
     @can('page.branch_stock.manage')
     <details class="card mb-3">
         <summary class="card-header fw-semibold">إضافة فرع</summary>
         <form class="card-body row g-3" method="post" action="{{ route('branch_stock.branches.store') }}">
             @csrf
-            <div class="col-md-4"><label class="form-label" for="branch-name">اسم الفرع</label><input id="branch-name" class="form-control" name="name" value="{{ old('name') }}" required maxlength="120"></div>
-            <div class="col-md-3"><label class="form-label" for="branch-code">رمز الفرع</label><input id="branch-code" class="form-control" name="code" value="{{ old('code') }}" required maxlength="32" pattern="[A-Za-z0-9_-]+"></div>
-            <div class="col-md-3"><label class="form-label" for="branch-phone">الهاتف</label><input id="branch-phone" class="form-control" name="phone" maxlength="32"></div>
-            <div class="col-md-8"><label class="form-label" for="branch-address">العنوان</label><input id="branch-address" class="form-control" name="address" maxlength="255"></div>
-            <div class="col-md-4 d-flex align-items-end"><button class="btn btn-primary w-100">حفظ الفرع</button></div>
+            <div class="col-12 col-md-4 col-xl-3"><label class="form-label" for="branch-name">اسم الفرع</label><input id="branch-name" class="form-control" name="name" value="{{ old('name') }}" required maxlength="120"></div>
+            <div class="col-12 col-md-4 col-xl-2"><label class="form-label" for="branch-code">رمز الفرع</label><input id="branch-code" class="form-control" name="code" value="{{ old('code') }}" required maxlength="32" pattern="[A-Za-z0-9_-]+"></div>
+            <div class="col-12 col-md-4 col-xl-2"><label class="form-label" for="branch-phone">الهاتف</label><input id="branch-phone" class="form-control" name="phone" maxlength="32"></div>
+            <div class="col-12 col-md-9 col-xl-3"><label class="form-label" for="branch-address">العنوان</label><input id="branch-address" class="form-control" name="address" maxlength="255"></div>
+            <div class="col-12 col-md-3 col-xl-2 d-flex align-items-end"><button class="btn btn-primary w-100">حفظ الفرع</button></div>
         </form>
     </details>
     @endcan
@@ -41,14 +37,14 @@
                     <td>
                         @can('page.branch_stock.manage')
                         <details><summary class="btn btn-sm btn-outline-secondary">تعديل</summary>
-                            <form class="d-flex flex-wrap gap-2 mt-2" method="post" action="{{ route('branch_stock.branches.update', $branch) }}">
+                            <form class="row g-2 mt-2 align-items-end" method="post" action="{{ route('branch_stock.branches.update', $branch) }}">
                                 @csrf @method('put')
-                                <input class="form-control form-control-sm" name="name" value="{{ $branch->name }}" required aria-label="اسم الفرع">
-                                <input class="form-control form-control-sm" name="code" value="{{ $branch->code }}" required aria-label="رمز الفرع">
-                                <input class="form-control form-control-sm" name="address" value="{{ $branch->address }}" aria-label="العنوان">
-                                <input class="form-control form-control-sm" name="phone" value="{{ $branch->phone }}" aria-label="الهاتف">
-                                <select class="form-select form-select-sm" name="is_active" aria-label="الحالة"><option value="1" @selected($branch->is_active)>نشط</option><option value="0" @selected(!$branch->is_active)>متوقف</option></select>
-                                <button class="btn btn-sm btn-primary">حفظ</button>
+                                <div class="col-12 col-md-4 col-xl-3"><label class="form-label small" for="branch-{{ $branch->id }}-name">اسم الفرع</label><input id="branch-{{ $branch->id }}-name" class="form-control form-control-sm" name="name" value="{{ $branch->name }}" required maxlength="120"></div>
+                                <div class="col-12 col-md-2 col-xl-2"><label class="form-label small" for="branch-{{ $branch->id }}-code">رمز الفرع</label><input id="branch-{{ $branch->id }}-code" class="form-control form-control-sm" name="code" value="{{ $branch->code }}" required maxlength="32" pattern="[A-Za-z0-9_-]+"></div>
+                                <div class="col-12 col-md-6 col-xl-3"><label class="form-label small" for="branch-{{ $branch->id }}-address">العنوان</label><input id="branch-{{ $branch->id }}-address" class="form-control form-control-sm" name="address" value="{{ $branch->address }}" maxlength="255"></div>
+                                <div class="col-12 col-md-3 col-xl-2"><label class="form-label small" for="branch-{{ $branch->id }}-phone">الهاتف</label><input id="branch-{{ $branch->id }}-phone" class="form-control form-control-sm" name="phone" value="{{ $branch->phone }}" maxlength="32"></div>
+                                <div class="col-12 col-md-3 col-xl-1"><label class="form-label small" for="branch-{{ $branch->id }}-status">الحالة</label><select id="branch-{{ $branch->id }}-status" class="form-select form-select-sm" name="is_active"><option value="1" @selected($branch->is_active)>نشط</option><option value="0" @selected(!$branch->is_active)>متوقف</option></select></div>
+                                <div class="col-12 col-md-6 col-xl-1"><button class="btn btn-sm btn-primary w-100">حفظ</button></div>
                             </form>
                         </details>
                         @if(!$branch->is_main)<form class="d-inline" method="post" action="{{ route('branch_stock.branches.destroy', $branch) }}" onsubmit="return confirm('حذف الفرع؟ لن يسمح النظام بحذف فرع له مخزون أو تحويلات.')">@csrf @method('delete')<button class="btn btn-sm btn-outline-danger">حذف</button></form>@endif

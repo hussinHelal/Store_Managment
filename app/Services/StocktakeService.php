@@ -80,8 +80,8 @@ class StocktakeService
 
         return DB::transaction(function () use ($stocktake, $itemId, $counted, $note): StocktakeItem {
             $lockedTake = Stocktake::query()->lockForUpdate()->findOrFail($stocktake->id);
-            if ($lockedTake->status !== 'counting') {
-                throw ValidationException::withMessages(['stocktake' => 'يمكن إدخال العد أثناء حالة العد فقط.']);
+            if (! in_array($lockedTake->status, ['counting', 'review'], true)) {
+                throw ValidationException::withMessages(['stocktake' => 'يمكن إدخال العد أثناء العد أو المراجعة وقبل اعتماد الجرد فقط.']);
             }
             $item = StocktakeItem::query()->where('stocktake_id', $lockedTake->id)->whereKey($itemId)->firstOrFail();
             DB::table('products')->where('id', $item->product_id)->lockForUpdate()->first();
@@ -91,6 +91,9 @@ class StocktakeService
                 'counted_movement_id' => (int) (DB::table('stock_movements')->max('id') ?? 0),
                 'note' => $note,
             ]);
+            if ($lockedTake->status === 'review') {
+                $item->update(['difference' => $this->differenceAtCount($lockedTake, $item)]);
+            }
 
             return $item->refresh()->load('product');
         }, 3);
@@ -102,6 +105,10 @@ class StocktakeService
             $locked = Stocktake::query()->lockForUpdate()->findOrFail($stocktake->id);
             if ($locked->status !== 'counting' || $locked->items()->whereNull('counted_qty')->exists()) {
                 throw ValidationException::withMessages(['stocktake' => 'أكمل عد جميع الأصناف قبل إرسال الجرد للمراجعة.']);
+            }
+            $items = $locked->items()->orderBy('product_id')->lockForUpdate()->get();
+            foreach ($items as $item) {
+                $item->update(['difference' => $this->differenceAtCount($locked, $item)]);
             }
             $locked->update(['status' => 'review']);
 
@@ -118,15 +125,7 @@ class StocktakeService
             }
 
             foreach ($locked->items->sortBy('product_id') as $item) {
-                $countedMovementId = (int) ($item->counted_movement_id ?? $locked->snapshot_movement_id);
-                $sinceSnapshot = (int) DB::table('stock_movements')
-                    ->where('branch_id', $locked->branch_id)
-                    ->where('product_id', $item->product_id)
-                    ->where('id', '>', $locked->snapshot_movement_id)
-                    ->where('id', '<=', $countedMovementId)
-                    ->sum('quantity_delta');
-                $expectedWhenCounted = (int) $item->system_qty + $sinceSnapshot;
-                $difference = (int) $item->counted_qty - $expectedWhenCounted;
+                $difference = $this->differenceAtCount($locked, $item);
                 $item->update(['difference' => $difference]);
                 if ($difference !== 0) {
                     $this->stock->change(
@@ -169,5 +168,18 @@ class StocktakeService
             }
             $locked->delete();
         }, 3);
+    }
+
+    private function differenceAtCount(Stocktake $stocktake, StocktakeItem $item): int
+    {
+        $countedMovementId = (int) ($item->counted_movement_id ?? $stocktake->snapshot_movement_id);
+        $movementsSinceSnapshot = (int) DB::table('stock_movements')
+            ->where('branch_id', $stocktake->branch_id)
+            ->where('product_id', $item->product_id)
+            ->where('id', '>', $stocktake->snapshot_movement_id)
+            ->where('id', '<=', $countedMovementId)
+            ->sum('quantity_delta');
+
+        return (int) $item->counted_qty - ((int) $item->system_qty + $movementsSinceSnapshot);
     }
 }

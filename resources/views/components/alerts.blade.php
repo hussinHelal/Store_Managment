@@ -2,7 +2,7 @@
 @if(session('success') || session('error') || $viewErrors->isNotEmpty())
     <div class="mb-4">
         @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert" data-auto-dismiss="6000">
                 {{ session('success') }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>

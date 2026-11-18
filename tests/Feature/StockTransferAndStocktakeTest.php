@@ -80,6 +80,7 @@ class StockTransferAndStocktakeTest extends TestCase
         $stocktakes->count($take, $item->id, 9);
         app(StockService::class)->decrease($product->id, 2, 'sale', $user, 'بيع بعد العد');
         $stocktakes->review($take);
+        $this->assertSame(-1, (int) $item->fresh()->difference);
         $stocktakes->approve($take, $user);
 
         $this->assertSame('approved', $take->fresh()->status);
@@ -87,6 +88,28 @@ class StockTransferAndStocktakeTest extends TestCase
         $this->assertSame(7, (int) $product->fresh()->stock);
         $this->assertSame(0, app(StockService::class)->verify()['branch_stock_mismatches']);
         $this->assertSame(0, app(StockService::class)->verify()['movement_mismatches']);
+    }
+
+    public function test_reviewed_stocktake_difference_can_be_corrected_before_approval(): void
+    {
+        $product = $this->product(10);
+        $user = User::factory()->create(['is_active' => true]);
+        $branchId = app(CurrentBranch::class)->id($user);
+        $stocktakes = app(StocktakeService::class);
+        $take = $stocktakes->start(['branch_id' => $branchId, 'scope' => 'all'], $user, 'stocktake-key-000002');
+        $item = $take->items->firstOrFail();
+
+        $stocktakes->count($take, $item->id, 8);
+        $stocktakes->review($take);
+        $this->assertSame('review', $take->fresh()->status);
+        $this->assertSame(-2, (int) $item->fresh()->difference);
+
+        $stocktakes->count($take, $item->id, 10, 'تمت إعادة العد');
+        $this->assertSame(0, (int) $item->fresh()->difference);
+        $stocktakes->approve($take, $user);
+
+        $this->assertSame(10, (int) $product->fresh()->stock);
+        $this->assertSame(0, app(StockService::class)->verify()['branch_stock_mismatches']);
     }
 
     private function product(int $stock): products

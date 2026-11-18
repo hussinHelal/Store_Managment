@@ -32,6 +32,7 @@
             ['route' => 'sales_reports.index', 'active' => 'sales_reports.*', 'can' => 'page.sales_reports.view', 'icon' => 'fa-chart-line', 'label' => 'تقارير المبيعات'],
         ]],
         ['key' => 'administration', 'label' => 'الإدارة', 'links' => [
+            ['route' => 'diagnostics.index', 'active' => 'diagnostics.*', 'can' => 'page.diagnostics.view', 'icon' => 'fa-stethoscope', 'label' => 'تشخيص الأجهزة'],
             ['route' => 'users.index', 'active' => 'users.*', 'can' => 'page.staff.view', 'icon' => 'fa-user-group', 'label' => 'الموظفون'],
             ['route' => 'backup.index', 'active' => 'backup.*', 'can' => 'page.backup.view', 'icon' => 'fa-database', 'label' => 'النسخ الاحتياطي'],
         ]],

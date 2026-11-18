@@ -10,6 +10,19 @@ import com.storemanagement.mobile.core.network.ApiResult
 import com.storemanagement.mobile.core.network.BranchStockDto
 import com.storemanagement.mobile.core.network.StockAdjustmentInputDto
 import com.storemanagement.mobile.core.network.StockMovementDto
+import com.storemanagement.mobile.core.network.BranchDto
+import com.storemanagement.mobile.core.network.BranchInputDto
+import com.storemanagement.mobile.core.network.ReorderLevelInputDto
+import com.storemanagement.mobile.core.network.StockTransferDto
+import com.storemanagement.mobile.core.network.StockTransferInputDto
+import com.storemanagement.mobile.core.network.StocktakeDto
+import com.storemanagement.mobile.core.network.StocktakeInputDto
+import com.storemanagement.mobile.core.network.StocktakeCountInputDto
+import com.storemanagement.mobile.core.network.StocktakeCancelInputDto
+import com.storemanagement.mobile.core.network.UsedPhoneDto
+import com.storemanagement.mobile.core.network.UsedPhoneInputDto
+import com.storemanagement.mobile.core.network.InstallationAppointmentDto
+import com.storemanagement.mobile.core.network.InstallationAppointmentInputDto
 import com.storemanagement.mobile.core.network.TrackedDeviceDto
 import com.storemanagement.mobile.core.network.TrackedDeviceInputDto
 import com.storemanagement.mobile.core.network.CategoryDto
@@ -115,8 +128,8 @@ class StoreRepository @Inject constructor(
     suspend fun updateTrackedDevice(id: Long, key: String, input: TrackedDeviceInputDto) = calls.execute { api.updateTrackedDevice(id, key, input) }
     suspend fun deleteTrackedDevice(id: Long, key: String) = calls.execute { api.deleteTrackedDevice(id, key).requireSuccess() }
 
-    suspend fun branchStock(query: String? = null): ApiResult<ApiPage<BranchStockDto>> = calls.execute {
-        api.branchStock(query)
+    suspend fun branchStock(query: String? = null, branchId: Long? = null, categoryId: Long? = null, availability: String? = null): ApiResult<ApiPage<BranchStockDto>> = calls.execute {
+        api.branchStock(query, branchId, categoryId, availability)
     }
 
     suspend fun stockMovements(): ApiResult<ApiPage<StockMovementDto>> = calls.execute {
@@ -126,6 +139,52 @@ class StoreRepository @Inject constructor(
     suspend fun adjustStock(key: String, input: StockAdjustmentInputDto) = calls.execute {
         api.adjustStock(key, input)
     }
+    suspend fun updateReorderLevel(id: Long, reorderLevel: Int) = calls.execute { api.updateReorderLevel(id, ReorderLevelInputDto(reorderLevel)) }
+
+    suspend fun branches(): ApiResult<ApiPage<BranchDto>> = calls.execute { api.branches() }
+    suspend fun createBranch(input: BranchInputDto) = calls.execute { api.createBranch(input) }
+    suspend fun updateBranch(id: Long, input: BranchInputDto) = calls.execute { api.updateBranch(id, input) }
+    suspend fun deleteBranch(id: Long) = calls.execute { api.deleteBranch(id).requireSuccess() }
+    suspend fun stockTransfers(branchId: Long? = null, status: String? = null): ApiResult<ApiPage<StockTransferDto>> = calls.execute { api.stockTransfers(branchId, status) }
+    suspend fun createStockTransfer(key: String, input: StockTransferInputDto) = calls.execute { api.createStockTransfer(key, input) }
+    suspend fun updateStockTransfer(id: Long, key: String, input: StockTransferInputDto) = calls.execute { api.updateStockTransfer(id, key, input) }
+    suspend fun sendStockTransfer(id: Long, key: String) = calls.execute { api.sendStockTransfer(id, key) }
+    suspend fun receiveStockTransfer(id: Long, key: String) = calls.execute { api.receiveStockTransfer(id, key) }
+    suspend fun cancelStockTransfer(id: Long, key: String, reason: String) = calls.execute { api.cancelStockTransfer(id, key, StocktakeCancelInputDto(reason)) }
+    suspend fun deleteStockTransfer(id: Long, key: String) = calls.execute { api.deleteStockTransfer(id, key).requireSuccess() }
+    suspend fun stocktakes(branchId: Long? = null, status: String? = null): ApiResult<ApiPage<StocktakeDto>> = calls.execute { api.stocktakes(branchId, status) }
+    suspend fun stocktake(id: Long): ApiResult<StocktakeDto> = calls.execute { api.stocktake(id).data }
+    suspend fun createStocktake(key: String, input: StocktakeInputDto) = calls.execute { api.createStocktake(key, input) }
+    suspend fun countStocktakeItem(id: Long, itemId: Long, key: String, input: StocktakeCountInputDto) = calls.execute { api.countStocktakeItem(id, itemId, key, input) }
+    suspend fun reviewStocktake(id: Long, key: String) = calls.execute { api.reviewStocktake(id, key) }
+    suspend fun approveStocktake(id: Long, key: String) = calls.execute { api.approveStocktake(id, key) }
+    suspend fun cancelStocktake(id: Long, key: String, reason: String) = calls.execute { api.cancelStocktake(id, key, StocktakeCancelInputDto(reason)) }
+
+    suspend fun usedPhones(search: String? = null, status: String? = null, condition: String? = null): ApiResult<ApiPage<UsedPhoneDto>> = calls.execute { api.usedPhones(search, status, condition) }
+    suspend fun saveUsedPhone(id: Long?, key: String, input: UsedPhoneInputDto, image: File?): ApiResult<UsedPhoneDto> = calls.execute {
+        val fields = linkedMapOf(
+            "brand" to input.brand, "model" to input.model, "condition" to input.condition,
+            "purchase_price" to input.purchasePrice, "asking_price" to input.askingPrice,
+            "purchase_date" to input.purchaseDate, "seller_name" to input.sellerName, "status" to input.status,
+            "remove_image" to input.removeImage.toString(),
+        ).apply {
+            input.imei?.let { put("imei", it) }
+            input.serialNumber?.let { put("serial_number", it) }
+            input.sellerPhone?.let { put("seller_phone", it) }
+            input.notes?.let { put("notes", it) }
+        }.mapValues { (_, value) -> value.toRequestBody("text/plain".toMediaType()) }
+        val imagePart = image?.let { MultipartBody.Part.createFormData("image", it.name, it.asRequestBody("image/*".toMediaType())) }
+        if (id == null) api.createUsedPhone(key, fields, imagePart).data else api.updateUsedPhone(id, key, fields, imagePart).data
+    }
+    suspend fun deleteUsedPhone(id: Long, key: String) = calls.execute { api.deleteUsedPhone(id, key).requireSuccess() }
+
+    suspend fun installationAppointments(search: String? = null, status: String? = null, date: String? = null): ApiResult<ApiPage<InstallationAppointmentDto>> = calls.execute {
+        api.installationAppointments(search, status, date)
+    }
+    suspend fun saveInstallationAppointment(id: Long?, key: String, input: InstallationAppointmentInputDto) = calls.execute {
+        if (id == null) api.createInstallationAppointment(key, input) else api.updateInstallationAppointment(id, key, input)
+    }
+    suspend fun deleteInstallationAppointment(id: Long, key: String) = calls.execute { api.deleteInstallationAppointment(id, key).requireSuccess() }
 
     suspend fun updateDamagedItem(id: Long, key: String, input: DamagedItemInputDto) = calls.execute {
         api.updateDamagedItem(id, key, input)

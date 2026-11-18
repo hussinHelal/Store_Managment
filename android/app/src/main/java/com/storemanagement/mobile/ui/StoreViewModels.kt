@@ -10,6 +10,17 @@ import com.storemanagement.mobile.core.network.ApiResult
 import com.storemanagement.mobile.core.network.BranchStockDto
 import com.storemanagement.mobile.core.network.StockAdjustmentInputDto
 import com.storemanagement.mobile.core.network.StockMovementDto
+import com.storemanagement.mobile.core.network.BranchDto
+import com.storemanagement.mobile.core.network.BranchInputDto
+import com.storemanagement.mobile.core.network.StockTransferDto
+import com.storemanagement.mobile.core.network.StockTransferInputDto
+import com.storemanagement.mobile.core.network.StocktakeDto
+import com.storemanagement.mobile.core.network.StocktakeInputDto
+import com.storemanagement.mobile.core.network.StocktakeCountInputDto
+import com.storemanagement.mobile.core.network.UsedPhoneDto
+import com.storemanagement.mobile.core.network.UsedPhoneInputDto
+import com.storemanagement.mobile.core.network.InstallationAppointmentDto
+import com.storemanagement.mobile.core.network.InstallationAppointmentInputDto
 import com.storemanagement.mobile.core.network.TrackedDeviceDto
 import com.storemanagement.mobile.core.network.TrackedDeviceInputDto
 import com.storemanagement.mobile.core.network.CategoryInputDto
@@ -334,6 +345,18 @@ class StoreViewModel @Inject constructor(
     val branchStock = mutableBranchStock
     private val mutableStockMovements = MutableStateFlow(RemotePage<StockMovementDto>())
     val stockMovements = mutableStockMovements
+    private val mutableBranches = MutableStateFlow(RemotePage<BranchDto>())
+    val branches = mutableBranches
+    private val mutableStockTransfers = MutableStateFlow(RemotePage<StockTransferDto>())
+    val stockTransfers = mutableStockTransfers
+    private val mutableStocktakes = MutableStateFlow(RemotePage<StocktakeDto>())
+    val stocktakes = mutableStocktakes
+    private val mutableStocktakeDetail = MutableStateFlow<StocktakeDto?>(null)
+    val stocktakeDetail = mutableStocktakeDetail
+    private val mutableUsedPhones = MutableStateFlow(RemotePage<UsedPhoneDto>())
+    val usedPhones = mutableUsedPhones
+    private val mutableAppointments = MutableStateFlow(RemotePage<InstallationAppointmentDto>())
+    val appointments = mutableAppointments
     private val mutableProductPage = MutableStateFlow(RemotePage<ProductDto>())
     val productPage = mutableProductPage
     private val mutableProductDetails = MutableStateFlow(ProductDetailUiState())
@@ -836,13 +859,13 @@ class StoreViewModel @Inject constructor(
         }
     }
 
-    fun refreshBranchStock(query: String? = null, includeMovements: Boolean = true) {
+    fun refreshBranchStock(query: String? = null, includeMovements: Boolean = true, branchId: Long? = null, categoryId: Long? = null, availability: String? = null) {
         if (!includeMovements) {
             mutableStockMovements.value = RemotePage()
         }
         viewModelScope.launch {
             mutableBranchStock.value = mutableBranchStock.value.copy(isLoading = true, error = null)
-            mutableBranchStock.value = when (val result = storeRepository.branchStock(query)) {
+            mutableBranchStock.value = when (val result = storeRepository.branchStock(query, branchId, categoryId, availability)) {
                 is ApiResult.Success -> result.value.toRemotePage()
                 is ApiResult.Failure -> {
                     notifySessionExpiry(result.error)
@@ -859,6 +882,176 @@ class StoreViewModel @Inject constructor(
                     mutableStockMovements.value.copy(isLoading = false, error = result.error.message)
                 }
             }
+        }
+    }
+
+    fun updateReorderLevel(item: BranchStockDto, value: Int) {
+        viewModelScope.launch {
+            if (value < 0) { mutableEvents.emit(StoreEvent.Failed("حد إعادة الطلب لا يمكن أن يكون سالباً.")); return@launch }
+            if (reportOperation("تم تحديث حد إعادة الطلب.") { storeRepository.updateReorderLevel(item.id, value) }) refreshBranchStock(includeMovements = false)
+        }
+    }
+
+    fun refreshBranches() {
+        viewModelScope.launch {
+            mutableBranches.value = mutableBranches.value.copy(isLoading = true, error = null)
+            mutableBranches.value = when (val result = storeRepository.branches()) {
+                is ApiResult.Success -> result.value.toRemotePage()
+                is ApiResult.Failure -> mutableBranches.value.copy(isLoading = false, error = result.error.message)
+            }
+        }
+    }
+
+    fun saveBranch(id: Long?, input: BranchInputDto) {
+        viewModelScope.launch {
+            val ok = if (id == null) reportOperation("تمت إضافة الفرع.") { storeRepository.createBranch(input) }
+            else reportOperation("تم تحديث بيانات الفرع.") { storeRepository.updateBranch(id, input) }
+            if (ok) { refreshBranches(); refreshBranchStock(includeMovements = false) }
+        }
+    }
+
+    fun deleteBranch(id: Long) {
+        viewModelScope.launch {
+            if (reportOperation("تم حذف الفرع.") { storeRepository.deleteBranch(id) }) refreshBranches()
+        }
+    }
+
+    fun refreshStockTransfers(status: String? = null) {
+        viewModelScope.launch {
+            mutableStockTransfers.value = mutableStockTransfers.value.copy(isLoading = true, error = null)
+            mutableStockTransfers.value = when (val result = storeRepository.stockTransfers(status = status)) {
+                is ApiResult.Success -> result.value.toRemotePage()
+                is ApiResult.Failure -> mutableStockTransfers.value.copy(isLoading = false, error = result.error.message)
+            }
+        }
+    }
+
+    fun saveStockTransfer(id: Long?, key: String, input: StockTransferInputDto) {
+        viewModelScope.launch {
+            val ok = if (id == null) reportOperation("تم إنشاء طلب التحويل.") { storeRepository.createStockTransfer(key, input) }
+            else reportOperation("تم تحديث طلب التحويل.") { storeRepository.updateStockTransfer(id, key, input) }
+            if (ok) { refreshStockTransfers(); refreshBranchStock(includeMovements = true) }
+        }
+    }
+
+    fun changeStockTransfer(id: Long, action: String, reason: String = "") {
+        viewModelScope.launch {
+            val key = UUID.randomUUID().toString()
+            val ok = when (action) {
+                "send" -> reportOperation("تم إرسال التحويل وتحديث المخزون.") { storeRepository.sendStockTransfer(id, key) }
+                "receive" -> reportOperation("تم استلام التحويل.") { storeRepository.receiveStockTransfer(id, key) }
+                "cancel" -> reportOperation("تم إلغاء التحويل.") { storeRepository.cancelStockTransfer(id, key, reason) }
+                "delete" -> reportOperation("تم حذف مسودة التحويل.") { storeRepository.deleteStockTransfer(id, key) }
+                else -> false
+            }
+            if (ok) { refreshStockTransfers(); refreshBranchStock(includeMovements = true) }
+        }
+    }
+
+    fun refreshStocktakes(status: String? = null) {
+        viewModelScope.launch {
+            mutableStocktakes.value = mutableStocktakes.value.copy(isLoading = true, error = null)
+            mutableStocktakes.value = when (val result = storeRepository.stocktakes(status = status)) {
+                is ApiResult.Success -> result.value.toRemotePage()
+                is ApiResult.Failure -> mutableStocktakes.value.copy(isLoading = false, error = result.error.message)
+            }
+        }
+    }
+
+    fun startStocktake(key: String, input: StocktakeInputDto) {
+        viewModelScope.launch {
+            if (reportOperation("تم بدء الجرد.") { storeRepository.createStocktake(key, input) }) refreshStocktakes()
+        }
+    }
+
+    fun loadStocktake(id: Long) {
+        viewModelScope.launch {
+            mutableStocktakeDetail.value = null
+            when (val result = storeRepository.stocktake(id)) {
+                is ApiResult.Success -> mutableStocktakeDetail.value = result.value
+                is ApiResult.Failure -> mutableEvents.emit(StoreEvent.Failed(result.error.message))
+            }
+        }
+    }
+
+    fun countStocktake(id: Long, itemId: Long, quantity: Int, note: String?) {
+        viewModelScope.launch {
+            if (reportOperation("تم حفظ العد.") { storeRepository.countStocktakeItem(id, itemId, UUID.randomUUID().toString(), StocktakeCountInputDto(quantity, note)) }) {
+                loadStocktake(id); refreshStocktakes()
+            }
+        }
+    }
+
+    fun changeStocktake(id: Long, action: String, reason: String = "") {
+        viewModelScope.launch {
+            val key = UUID.randomUUID().toString()
+            val ok = when (action) {
+                "review" -> reportOperation("تم إرسال الجرد للمراجعة.") { storeRepository.reviewStocktake(id, key) }
+                "approve" -> reportOperation("تم اعتماد الجرد وتحديث المخزون.") { storeRepository.approveStocktake(id, key) }
+                "cancel" -> reportOperation("تم إلغاء الجرد.") { storeRepository.cancelStocktake(id, key, reason) }
+                else -> false
+            }
+            if (ok) { refreshStocktakes(); loadStocktake(id) }
+        }
+    }
+
+    fun refreshUsedPhones(search: String? = null, status: String? = null, condition: String? = null) {
+        viewModelScope.launch {
+            mutableUsedPhones.value = mutableUsedPhones.value.copy(isLoading = true, error = null)
+            mutableUsedPhones.value = when (val result = storeRepository.usedPhones(search, status, condition)) {
+                is ApiResult.Success -> result.value.toRemotePage()
+                is ApiResult.Failure -> mutableUsedPhones.value.copy(isLoading = false, error = result.error.message)
+            }
+        }
+    }
+
+    fun saveUsedPhone(id: Long?, input: UsedPhoneInputDto, imageUri: Uri?, resolver: ContentResolver, cacheDir: File) {
+        viewModelScope.launch {
+            var imageFile: File? = null
+            try {
+                if (imageUri != null) withContext(Dispatchers.IO) {
+                    imageFile = File.createTempFile("used-phone-", ".image", cacheDir)
+                    resolver.openInputStream(imageUri)?.use { inputStream -> imageFile!!.outputStream().use(inputStream::copyTo) }
+                        ?: error("تعذر قراءة الصورة المحددة")
+                }
+                val key = UUID.randomUUID().toString()
+                if (reportOperation(if (id == null) "تم تسجيل الهاتف المستعمل." else "تم تحديث بيانات الهاتف.") {
+                        storeRepository.saveUsedPhone(id, key, input, imageFile)
+                    }) refreshUsedPhones()
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (error: Exception) { mutableEvents.emit(StoreEvent.Failed(error.message ?: "تعذر قراءة الصورة المحددة.")) }
+            finally { imageFile?.delete() }
+        }
+    }
+
+    fun deleteUsedPhone(id: Long) {
+        viewModelScope.launch {
+            if (reportOperation("تم حذف سجل الهاتف المستعمل.") { storeRepository.deleteUsedPhone(id, UUID.randomUUID().toString()) }) refreshUsedPhones()
+        }
+    }
+
+    fun refreshAppointments(search: String? = null, status: String? = null, date: String? = null) {
+        viewModelScope.launch {
+            mutableAppointments.value = mutableAppointments.value.copy(isLoading = true, error = null)
+            mutableAppointments.value = when (val result = storeRepository.installationAppointments(search, status, date)) {
+                is ApiResult.Success -> result.value.toRemotePage()
+                is ApiResult.Failure -> mutableAppointments.value.copy(isLoading = false, error = result.error.message)
+            }
+        }
+    }
+
+    fun saveAppointment(id: Long?, input: InstallationAppointmentInputDto) {
+        viewModelScope.launch {
+            val key = UUID.randomUUID().toString()
+            if (reportOperation(if (id == null) "تم حجز الموعد." else "تم تحديث الموعد.") {
+                    storeRepository.saveInstallationAppointment(id, key, input)
+                }) refreshAppointments()
+        }
+    }
+
+    fun deleteAppointment(id: Long) {
+        viewModelScope.launch {
+            if (reportOperation("تم حذف الموعد.") { storeRepository.deleteInstallationAppointment(id, UUID.randomUUID().toString()) }) refreshAppointments()
         }
     }
 

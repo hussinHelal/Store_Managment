@@ -10,20 +10,61 @@ window.Chart = Chart;
 window.createBarcodeScanner = function (video, onScan, onError, onReady = () => {}) {
     let active = true;
     let controls = null;
+    let fallbackButton = null;
+    let fallbackInput = null;
+    let imageUrl = null;
+    let reader = null;
+    const enablePhotoFallback = () => {
+        if (!active || fallbackInput) return;
+        video.dataset.scanMode = 'photo';
+        video.classList.add('d-none');
+        fallbackButton = document.createElement('button');
+        fallbackButton.type = 'button';
+        fallbackButton.className = 'btn btn-outline-primary w-100 mt-2';
+        fallbackButton.textContent = 'التقاط صورة للباركود بالكاميرا';
+        fallbackInput = document.createElement('input');
+        fallbackInput.type = 'file';
+        fallbackInput.accept = 'image/*';
+        fallbackInput.setAttribute('capture', 'environment');
+        fallbackInput.className = 'visually-hidden';
+        fallbackInput.addEventListener('change', async () => {
+            const file = fallbackInput?.files?.[0];
+            if (!file || !active) return;
+            if (imageUrl) URL.revokeObjectURL(imageUrl);
+            imageUrl = URL.createObjectURL(file);
+            try {
+                const result = await reader.decodeFromImageUrl(imageUrl);
+                if (!active) return;
+                const barcode = result.getText().trim();
+                if (barcode) { stop(); onScan(barcode); }
+            } catch {
+                if (active) onError(new Error('تعذرت قراءة الباركود من الصورة. أعد التقاط صورة أو استخدم البحث اليدوي.'));
+            }
+        });
+        fallbackButton.addEventListener('click', () => fallbackInput?.click());
+        video.insertAdjacentElement('afterend', fallbackButton);
+        fallbackButton.insertAdjacentElement('afterend', fallbackInput);
+        onReady();
+    };
     const stop = () => {
         active = false;
         controls?.stop();
         controls = null;
+        fallbackButton?.remove();
+        fallbackInput?.remove();
+        fallbackButton = null;
+        fallbackInput = null;
+        if (imageUrl) URL.revokeObjectURL(imageUrl);
+        imageUrl = null;
         video.srcObject?.getTracks().forEach(track => track.stop());
         video.pause();
         video.srcObject = null;
+        video.classList.remove('d-none');
+        delete video.dataset.scanMode;
     };
     (async () => {
         try {
             const mediaDevices = navigator.mediaDevices;
-            if (!mediaDevices || typeof mediaDevices.getUserMedia !== 'function') {
-                throw new Error('الكاميرا غير متاحة في هذا المتصفح أو الاتصال. استخدم قارئ باركود متصلًا أو حقل البحث اليدوي.');
-            }
             const [{ BrowserMultiFormatReader, BarcodeFormat }, { DecodeHintType }] = await Promise.all([
                 import('@zxing/browser'), import('@zxing/library'),
             ]);
@@ -32,7 +73,11 @@ window.createBarcodeScanner = function (video, onScan, onError, onReady = () => 
                 [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.CODE_93, BarcodeFormat.ITF, BarcodeFormat.CODABAR, BarcodeFormat.QR_CODE]],
                 [DecodeHintType.TRY_HARDER, true],
             ]);
-            const reader = new BrowserMultiFormatReader(hints);
+            reader = new BrowserMultiFormatReader(hints);
+            if (!mediaDevices || typeof mediaDevices.getUserMedia !== 'function') {
+                enablePhotoFallback();
+                return;
+            }
             const onDecode = (result, error) => {
                 if (!active) return;
                 if (result) {
@@ -60,10 +105,16 @@ window.createBarcodeScanner = function (video, onScan, onError, onReady = () => 
             }
             if (lastError) throw lastError;
             if (!active) { controls?.stop(); return; }
+            video.dataset.scanMode = 'live';
             onReady();
         } catch (error) {
             if (!active) return;
             stop();
+            if (reader) {
+                active = true;
+                enablePhotoFallback();
+                return;
+            }
             onError(error instanceof Error ? error : new Error('تعذر تشغيل قارئ الباركود. استخدم البحث اليدوي.'));
         }
     })();

@@ -303,7 +303,8 @@ data class SupplierReceiptProductDto(
 
 @Serializable
 data class PurchaseReceiptLineInputDto(
-    @SerialName("product_id") val productId: Long,
+    @SerialName("product_id") val productId: Long? = null,
+    @SerialName("product_name") val productName: String? = null,
     val quantity: Int,
     @SerialName("unit_cost") val unitCost: String,
 )
@@ -511,6 +512,115 @@ data class StockMovementDto(
     @SerialName("balance_after") val balanceAfter: Int,
     val note: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
+)
+
+@Serializable
+data class BranchDto(
+    val id: Long, val name: String, val code: String, val address: String? = null,
+    val phone: String? = null, @SerialName("is_main") val isMain: Boolean = false,
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
+data class ReorderLevelInputDto(@SerialName("reorder_level") val reorderLevel: Int)
+
+@Serializable
+data class BranchInputDto(
+    val name: String, val code: String, val address: String? = null, val phone: String? = null,
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
+data class StockTransferLineInputDto(@SerialName("product_id") val productId: Long, val quantity: Int)
+
+@Serializable
+data class StockTransferInputDto(
+    @SerialName("from_branch_id") val fromBranchId: Long,
+    @SerialName("to_branch_id") val toBranchId: Long,
+    val note: String? = null,
+    val items: List<StockTransferLineInputDto>,
+    @SerialName("idempotency_key") val idempotencyKey: String,
+)
+
+@Serializable
+data class StockTransferItemDto(@SerialName("product_id") val productId: Long, @SerialName("product_name") val productName: String? = null, val quantity: Int)
+
+@Serializable
+data class StockTransferDto(
+    val id: Long, val number: String, @SerialName("from_branch_id") val fromBranchId: Long,
+    @SerialName("from_branch") val fromBranch: String? = null, @SerialName("to_branch_id") val toBranchId: Long,
+    @SerialName("to_branch") val toBranch: String? = null, val status: String, val note: String? = null,
+    @SerialName("sent_at") val sentAt: String? = null, @SerialName("received_at") val receivedAt: String? = null,
+    val items: List<StockTransferItemDto> = emptyList(),
+)
+
+@Serializable
+data class StocktakeItemDto(
+    val id: Long, @SerialName("product_id") val productId: Long, @SerialName("product_name") val productName: String? = null,
+    val barcode: String? = null, @SerialName("system_qty") val systemQty: Int, @SerialName("counted_qty") val countedQty: Int? = null,
+    val difference: Int? = null, val note: String? = null,
+)
+
+@Serializable
+data class StocktakeDto(
+    val id: Long, val number: String, @SerialName("branch_id") val branchId: Long,
+    @SerialName("branch_name") val branchName: String? = null, val scope: String, @SerialName("category_id") val categoryId: Long? = null,
+    val status: String, @SerialName("snapshot_at") val snapshotAt: String? = null, val note: String? = null,
+    val items: List<StocktakeItemDto> = emptyList(),
+)
+
+@Serializable
+data class StocktakeInputDto(
+    @SerialName("branch_id") val branchId: Long, val scope: String = "all", @SerialName("category_id") val categoryId: Long? = null,
+    val note: String? = null, @SerialName("idempotency_key") val idempotencyKey: String,
+)
+
+@Serializable
+data class StocktakeCountInputDto(@SerialName("counted_qty") val countedQty: Int, val note: String? = null)
+
+@Serializable
+data class StocktakeCountResponseDto(val id: Long, @SerialName("counted_qty") val countedQty: Int, @SerialName("counted_at") val countedAt: String? = null)
+
+@Serializable
+data class StocktakeCancelInputDto(val reason: String)
+
+@Serializable
+data class UsedPhoneDto(
+    val id: Long, val brand: String, val model: String, val imei: String? = null,
+    @SerialName("serial_number") val serialNumber: String? = null, val condition: String,
+    @SerialName("purchase_price") val purchasePrice: String, @SerialName("asking_price") val askingPrice: String,
+    @SerialName("purchase_date") val purchaseDate: String, @SerialName("seller_name") val sellerName: String,
+    @SerialName("seller_phone") val sellerPhone: String? = null, val status: String,
+    @SerialName("image_url") val imageUrl: String? = null, val notes: String? = null,
+)
+
+@Serializable
+data class UsedPhoneInputDto(
+    val brand: String, val model: String, val imei: String? = null,
+    @SerialName("serial_number") val serialNumber: String? = null, val condition: String,
+    @SerialName("purchase_price") val purchasePrice: String, @SerialName("asking_price") val askingPrice: String,
+    @SerialName("purchase_date") val purchaseDate: String, @SerialName("seller_name") val sellerName: String,
+    @SerialName("seller_phone") val sellerPhone: String? = null, val status: String,
+    val notes: String? = null, @SerialName("remove_image") val removeImage: Boolean = false,
+)
+
+@Serializable
+data class InstallationAppointmentDto(
+    val id: Long, @SerialName("customer_name") val customerName: String, val phone: String,
+    @SerialName("device_model") val deviceModel: String, @SerialName("service_type") val serviceType: String,
+    @SerialName("service_details") val serviceDetails: String? = null, @SerialName("scheduled_at") val scheduledAt: String,
+    @SerialName("duration_minutes") val durationMinutes: Int = 60, @SerialName("technician_id") val technicianId: Long? = null,
+    @SerialName("technician_name") val technicianName: String? = null, val status: String, val address: String? = null,
+    val notes: String? = null, @SerialName("completed_at") val completedAt: String? = null,
+)
+
+@Serializable
+data class InstallationAppointmentInputDto(
+    @SerialName("customer_name") val customerName: String, val phone: String, @SerialName("device_model") val deviceModel: String,
+    @SerialName("service_type") val serviceType: String, @SerialName("service_details") val serviceDetails: String? = null,
+    @SerialName("scheduled_at") val scheduledAt: String, @SerialName("duration_minutes") val durationMinutes: Int,
+    @SerialName("technician_id") val technicianId: Long? = null, val status: String,
+    val address: String? = null, val notes: String? = null,
 )
 
 @Serializable

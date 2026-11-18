@@ -32,7 +32,8 @@ class CashierWebCheckoutTest extends TestCase
 
         $scanner = file_get_contents(resource_path('js/app.js'));
         self::assertStringContainsString("typeof mediaDevices.getUserMedia !== 'function'", $scanner);
-        self::assertStringContainsString('window.isSecureContext', $scanner);
+        self::assertStringContainsString("fallbackInput.setAttribute('capture', 'environment')", $scanner);
+        self::assertStringContainsString('reader.decodeFromImageUrl(imageUrl)', $scanner);
     }
 
     public function test_cashier_success_response_contains_only_named_checkout_fields(): void
