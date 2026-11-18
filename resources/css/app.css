@@ -168,6 +168,20 @@ header .dropdown {
     object-fit: cover;
 }
 
+.cashier-result-meta {
+    flex: 0 0 8.75rem;
+    width: 8.75rem;
+    text-align: end;
+    white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+    .cashier-result-meta {
+        flex-basis: 7.25rem;
+        width: 7.25rem;
+    }
+}
+
 .camera-scan-video {
     aspect-ratio: 16 / 9;
     max-height: 65vh;

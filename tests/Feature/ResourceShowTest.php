@@ -160,10 +160,12 @@ class ResourceShowTest extends TestCase
 
         $this->actingAs($admin, 'web')->get(route('products.create'))
             ->assertOk()
-            ->assertSee('window.createBarcodeScanner');
+            ->assertSee('window.createBarcodeScanner')
+            ->assertSee('error?.message');
         $this->actingAs($admin, 'web')->get(route('products.edit', $product))
             ->assertOk()
-            ->assertSee('window.createBarcodeScanner');
+            ->assertSee('window.createBarcodeScanner')
+            ->assertSee('error?.message');
     }
 
     public function test_maintenance_state_can_be_changed_to_refused_in_arabic(): void

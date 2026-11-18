@@ -113,7 +113,7 @@
           }, (error) => {
             stopScanner();
             barcodeInput.focus();
-            window.showBootstrapAlert('لم تتوفر الكاميرا. اكتب الباركود هنا أو استخدم ماسحاً متصلاً بالجهاز.', 'warning');
+            window.showBootstrapAlert(error?.message || 'تعذر تشغيل الكاميرا. اكتب الباركود أو استخدم ماسحاً متصلاً بالجهاز.', 'warning');
           });
         }
 

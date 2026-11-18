@@ -44,6 +44,8 @@ class SidebarNavigationTest extends TestCase
             ->assertSee(route('diagnostics.index'), false);
 
         $this->actingAs($user, 'web')->get(route('diagnostics.index'))->assertOk()
-            ->assertSee('تشخيص الأجهزة')->assertSee('navigator.mediaDevices');
+            ->assertSee('تشخيص الأجهزة')->assertSee('navigator.mediaDevices')
+            ->assertSee('id="startDiagnosticScan"', false)
+            ->assertSee('window.createBarcodeScanner', false);
     }
 }

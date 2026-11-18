@@ -10,7 +10,7 @@
         ]],
         ['key' => 'inventory', 'label' => 'المخزون', 'links' => [
             ['route' => 'used_phones.index', 'active' => 'used_phones.*', 'can' => 'page.used_phones.view', 'icon' => 'fa-mobile-screen-button', 'label' => 'الموبايلات المستعملة'],
-            ['route' => 'branch_stock.index', 'active' => 'branch_stock.*', 'can' => 'page.branch_stock.view', 'icon' => 'fa-warehouse', 'label' => 'مخزون الفروع'],
+            ['route' => 'branch_stock.index', 'active' => 'branch_stock.index', 'can' => 'page.branch_stock.view', 'icon' => 'fa-warehouse', 'label' => 'مخزون الفروع'],
             ['route' => 'stock_movements.index', 'active' => 'stock_movements.*', 'can' => 'page.stock_movements.view', 'icon' => 'fa-arrow-right-arrow-left', 'label' => 'حركات المخزون'],
             ['route' => 'branch_stock.transfers.index', 'active' => 'branch_stock.transfers.*', 'can' => 'page.branch_stock.view', 'icon' => 'fa-truck-ramp-box', 'label' => 'تحويلات المخزون'],
             ['route' => 'stocktake.index', 'active' => 'stocktake.*', 'can' => 'page.stocktake.view', 'icon' => 'fa-clipboard-check', 'label' => 'جرد المخزون'],

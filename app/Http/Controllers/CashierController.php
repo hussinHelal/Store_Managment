@@ -16,6 +16,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -32,9 +33,7 @@ class CashierController extends Controller
 {
     private const WALK_IN_CUSTOMER = 'زبون نقدي';
 
-    private const SEARCH_LIMIT = 20;
-
-    private const TOP_SELLERS_LIMIT = 12;
+    private const SEARCH_PAGE_SIZE = 15;
 
     private const IDEMPOTENCY_MINUTES = 10;
 
@@ -53,8 +52,12 @@ class CashierController extends Controller
      */
     public function search(Request $request, CurrentBranch $currentBranch): JsonResponse
     {
-        $validated = $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
         $term = trim((string) ($validated['q'] ?? ''));
+        $page = (int) ($validated['page'] ?? 1);
         $branchId = $currentBranch->id($request->user());
         $stockService = app(StockService::class);
         products::query()->whereDoesntHave('branchStocks')->pluck('id')->each(
@@ -69,10 +72,9 @@ class CashierController extends Controller
                 ->whereHas('branchStocks', fn ($stock) => $stock->where('branch_id', $branchId)->where('quantity', '>', 0))
                 ->orderByDesc('total_sold')
                 ->orderBy('name')
-                ->limit(self::TOP_SELLERS_LIMIT)
-                ->get(['id', 'name', 'price', 'barcode', 'image']);
+                ->paginate(self::SEARCH_PAGE_SIZE, ['id', 'name', 'price', 'barcode', 'image'], 'page', $page);
 
-            return $this->searchResponse($items, false);
+            return $this->searchResponse($items->getCollection(), false, $items);
         }
 
         // Exact barcode match (a scanner types the code and presses Enter).
@@ -95,10 +97,9 @@ class CashierController extends Controller
         // Rank: names starting with the query first, then in-stock before out-of-stock.
         $items = $query
             ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END, name', [$this->escapeLike($term).'%'])
-            ->limit(self::SEARCH_LIMIT)
-            ->get(['id', 'name', 'price', 'barcode', 'image']);
+            ->paginate(self::SEARCH_PAGE_SIZE, ['id', 'name', 'price', 'barcode', 'image'], 'page', $page);
 
-        return $this->searchResponse($items, false);
+        return $this->searchResponse($items->getCollection(), false, $items);
     }
 
     /**
@@ -204,10 +205,16 @@ class CashierController extends Controller
         return response()->json($response);
     }
 
-    private function searchResponse(Collection $items, bool $exact): JsonResponse
+    private function searchResponse(Collection $items, bool $exact, ?LengthAwarePaginator $pagination = null): JsonResponse
     {
         return response()->json([
             'exact' => $exact,
+            'pagination' => $pagination ? [
+                'current_page' => $pagination->currentPage(),
+                'last_page' => $pagination->lastPage(),
+                'per_page' => $pagination->perPage(),
+                'total' => $pagination->total(),
+            ] : null,
             'data' => $items->map(fn (products $product) => [
                 'id' => $product->id,
                 'name' => $product->name,

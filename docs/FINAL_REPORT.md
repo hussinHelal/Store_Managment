@@ -106,6 +106,19 @@ The sidebar does not claim routes for unfinished modules. The end-to-end 17-page
 - Browser camera permission is controlled by the browser security model and cannot be forced by application code. `getUserMedia` is available only in secure contexts such as HTTPS and localhost; ordinary insecure HTTP does not expose `navigator.mediaDevices`. This makes live camera use impossible on those origins, while connected scanners that type into the cashier search remain usable.
 - Verification: cashier scanner feature tests passed (2 tests); `node --check resources/js/app.js` passed; Vite production build passed (306 modules; existing large-chunk warning). Camera hardware/permission behavior still needs an actual browser/device check.
 
+## Diagnostics camera start and product form messaging - 2026-11-18
+
+- Added explicit start/stop live scanning controls and a video preview to the diagnostics page. The start button calls the shared scanner from a user gesture and reports secure-context status.
+- The shared scanner now starts the `getUserMedia` permission request before dynamically loading ZXing modules, preserving the browser's click activation for the camera permission prompt. Pending streams are stopped if the scanner closes while permission is being resolved.
+- Product create/edit pages now show the actual Arabic camera permission/platform error instead of replacing every error with “camera unavailable.”
+- Verification: cashier/resource/diagnostics focused tests passed (8 tests, 83 assertions); JS syntax check and diff whitespace check passed. Vite production rebuild passed (306 modules; large-chunk warning remains).
+
+## Cashier product pagination and stock alignment - 2026-11-18
+
+- Cashier product search now returns 15 products per server page and includes pagination metadata. The cashier requests the next page only when selected, preserving lightweight initial loads and exact barcode lookup behavior.
+- Product result cards use a fixed-width right-aligned price/stock column so the stock value stays aligned across varying product names and quantities.
+- The branch inventory sidebar item is active only on the branch inventory page; opening the transfers route highlights the transfers item alone.
+
 
 ## Sidebar navigation follow-up - 2026-11-18
 

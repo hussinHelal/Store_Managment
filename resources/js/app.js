@@ -11,12 +11,15 @@ window.createBarcodeScanner = function (video, onScan, onError, onReady = () => 
     let active = true;
     let controls = null;
     let stream = null;
+    let cameraRequest = null;
     const stop = () => {
         active = false;
         controls?.stop();
         controls = null;
         stream?.getTracks().forEach(track => track.stop());
         stream = null;
+        cameraRequest?.then(requestedStream => requestedStream.getTracks().forEach(track => track.stop())).catch(() => {});
+        cameraRequest = null;
         video.pause();
         video.srcObject = null;
         delete video.dataset.scanMode;
@@ -27,6 +30,13 @@ window.createBarcodeScanner = function (video, onScan, onError, onReady = () => 
             if (!mediaDevices || typeof mediaDevices.getUserMedia !== 'function') {
                 throw new Error('المتصفح لا يتيح الكاميرا الحية لهذا العنوان. افتح الموقع عبر HTTPS أو localhost واسمح للمتصفح باستخدام الكاميرا.');
             }
+            // Start the permission request synchronously from the button's click event,
+            // before loading the decoder modules, so browsers can present the prompt.
+            cameraRequest = mediaDevices.getUserMedia({
+                audio: false,
+                video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+            });
+            cameraRequest.catch(() => {}); // The rejection is surfaced below after ZXing loads.
             const [{ BrowserMultiFormatReader, BarcodeFormat }, { DecodeHintType }] = await Promise.all([
                 import('@zxing/browser'), import('@zxing/library'),
             ]);
@@ -47,12 +57,9 @@ window.createBarcodeScanner = function (video, onScan, onError, onReady = () => 
                     stop(); onError(error);
                 }
             };
-            // Call getUserMedia directly so the browser requests camera permission without
-            // enumerating devices first. Enumeration is unsupported in some embedded browsers.
-            stream = await mediaDevices.getUserMedia({
-                audio: false,
-                video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-            });
+            // No device enumeration: use the stream requested directly above.
+            stream = await cameraRequest;
+            cameraRequest = null;
             if (!active) { stream.getTracks().forEach(track => track.stop()); return; }
             controls = await reader.decodeFromStream(stream, video, onDecode);
             if (!active) { controls.stop(); return; }
@@ -74,6 +81,16 @@ window.createBarcodeScanner = function (video, onScan, onError, onReady = () => 
 };document.addEventListener('DOMContentLoaded', () => {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+    const sidebarGroups = [...document.querySelectorAll('.sidebar-group')];
+    sidebarGroups.forEach((group) => {
+        group.addEventListener('toggle', () => {
+            if (!group.open) return;
+            sidebarGroups.forEach((otherGroup) => {
+                if (otherGroup !== group && otherGroup.open) otherGroup.open = false;
+            });
+        });
+    });
 });
 
 $(function () {

@@ -337,7 +337,7 @@
         searchTimer = setTimeout(() => runSearch(false), 250);
     }
 
-    async function runSearch(fromEnter) {
+    async function runSearch(fromEnter, page = 1) {
         const term = qInput.value.trim();
         searchController?.abort();
         searchController = new AbortController();
@@ -345,7 +345,7 @@
         spinner.classList.remove('d-none');
 
         try {
-            const res = await fetch(CFG.searchUrl + '?q=' + encodeURIComponent(term), {
+            const res = await fetch(CFG.searchUrl + '?q=' + encodeURIComponent(term) + '&page=' + encodeURIComponent(page), {
                 headers: HEADERS, credentials: 'same-origin', signal: searchController.signal,
             });
             if (res.status === 401) { window.location.href = CFG.loginUrl; return; }
@@ -354,7 +354,7 @@
             const json = await res.json();
             if (seq !== searchSeq) return; // a newer search replaced this one
 
-            renderResults(json.data, term);
+            renderResults(json.data, term, json.pagination);
 
             // Scanner flow: Enter on an exact barcode, or a single match, adds it directly.
             if (fromEnter && term && json.data.length && (json.exact || json.data.length === 1)) {
@@ -370,7 +370,7 @@
         }
     }
 
-    function renderResults(list, term) {
+    function renderResults(list, term, pagination = null) {
         resultsBox.replaceChildren();
 
         if (!list.length) {
@@ -385,6 +385,8 @@
             resultsBox.append(el('div', { class: 'list-group-item small text-body-secondary bg-body-tertiary', text: 'الأكثر مبيعاً' }));
         }
 
+        const pageCount = pagination?.last_page || 1;
+        const currentPage = pagination?.current_page || 1;
         list.forEach((product) => {
             const out = Number(product.stock) <= 0;
             const low = !out && Number(product.stock) <= 5;
@@ -402,13 +404,27 @@
                 el('div', { class: 'flex-grow-1 text-truncate' },
                     el('div', { class: 'fw-semibold text-truncate', text: product.name }),
                     product.barcode ? el('div', { class: 'small text-body-secondary', text: product.barcode }) : null),
-                el('div', { class: 'text-nowrap' },
-                    el('div', { class: 'fw-semibold', text: money(toCents(product.price)) }),
+                el('div', { class: 'cashier-result-meta' },
+                    el('div', { class: 'fw-semibold text-nowrap', text: money(toCents(product.price)) }),
                     el('span', {
-                        class: 'badge ' + (out ? 'text-bg-danger' : (low ? 'text-bg-warning' : 'text-bg-secondary')),
+                        class: 'badge d-inline-block text-nowrap ' + (out ? 'text-bg-danger' : (low ? 'text-bg-warning' : 'text-bg-secondary')),
                         text: out ? 'نفد' : 'المخزون: ' + product.stock,
                     }))));
         });
+
+        if (pageCount > 1) {
+            const pagination = el('nav', { class: 'border-top p-2 d-flex align-items-center justify-content-between gap-2', 'aria-label': 'صفحات المنتجات' },
+                el('button', {
+                    type: 'button', class: 'btn btn-sm btn-outline-secondary', disabled: currentPage <= 1,
+                    text: 'السابق', onclick: () => runSearch(false, currentPage - 1),
+                }),
+                el('span', { class: 'small text-body-secondary text-nowrap', text: `صفحة ${currentPage} من ${pageCount} — ${pagination.total} منتج` }),
+                el('button', {
+                    type: 'button', class: 'btn btn-sm btn-outline-secondary', disabled: currentPage >= pageCount,
+                    text: 'التالي', onclick: () => runSearch(false, currentPage + 1),
+                }));
+            resultsBox.append(pagination);
+        }
     }
 
     // ---------- checkout ----------

@@ -32,8 +32,10 @@ class CashierWebCheckoutTest extends TestCase
 
         $scanner = file_get_contents(resource_path('js/app.js'));
         self::assertStringContainsString("typeof mediaDevices.getUserMedia !== 'function'", $scanner);
-        self::assertStringContainsString('stream = await mediaDevices.getUserMedia({', $scanner);
+        self::assertStringContainsString('cameraRequest = mediaDevices.getUserMedia({', $scanner);
+        self::assertStringContainsString('stream = await cameraRequest', $scanner);
         self::assertStringContainsString('reader.decodeFromStream(stream, video, onDecode)', $scanner);
+        self::assertLessThan(strpos($scanner, 'import(\'@zxing/browser\')'), strpos($scanner, 'cameraRequest = mediaDevices.getUserMedia({'));
         self::assertStringNotContainsString('enumerateDevices', $scanner);
         self::assertStringNotContainsString('decodeFromConstraints', $scanner);
         self::assertStringNotContainsString('decodeFromImageUrl', $scanner);
