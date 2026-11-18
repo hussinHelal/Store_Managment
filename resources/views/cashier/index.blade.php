@@ -566,9 +566,7 @@
             cameraStatus.textContent = error?.message || 'تعذر تشغيل الكاميرا. استخدم قارئ باركود متصل أو البحث اليدوي.';
             cameraManualBarcode.focus();
         }, () => {
-            cameraStatus.textContent = cameraVideo.dataset.scanMode === 'photo'
-                ? 'استخدم زر التقاط صورة للباركود الظاهر أسفل المعاينة.'
-                : 'الكاميرا تعمل. قرّب الباركود من إطار الصورة.';
+            cameraStatus.textContent = 'الكاميرا تعمل مباشرة. قرّب الباركود من إطار الصورة.';
         });
     });
 

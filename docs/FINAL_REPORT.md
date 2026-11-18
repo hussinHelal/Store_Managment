@@ -88,7 +88,7 @@ The sidebar does not claim routes for unfinished modules. The end-to-end 17-page
 
 - Stocktake review now calculates and persists differences before approval and allows authorized reviewers to correct counted quantities/notes while still in review. Approval reconciles against movements that occurred after the count. Tests cover review visibility and corrections.
 - Removed duplicate stock success alerts; the shared alert component now has a close button and auto-dismiss behavior. Stock branch forms use aligned responsive grids.
-- Browser barcode scanning now falls back to camera photo capture when `getUserMedia` is missing or camera startup fails, with manual search retained. A live camera stream still depends on browser/device permission and platform support.
+- Browser barcode scanning previously fell back to camera photo capture; the follow-up below removes that path in favor of a direct live camera permission request.
 - Added a permission-gated Arabic hardware diagnostics page to web navigation and an Android diagnostics screen for local camera/print-service checks and connected barcode-reader input.
 - Verification: PHP suite 183 passed (1,214 assertions); diagnostics navigation test passed (1 test, 23 assertions); `node --check resources/js/app.js` and `git diff --check` passed. Latest Vite production build passed (306 modules); the bundle-size warning remains. Android Gradle compilation did not reach Kotlin compilation: Gradle failed while accessing its own distribution JAR (`AccessDeniedException`), so native compile/runtime remains NOT VERIFIED. Production migrations and deployment remain untouched.
 - Remaining mission scope is still substantial: cashier shifts, discount approvals, line-level partial refunds, treasury extension, general ledger/period close, distinct financial reports and dedicated exports, plus complete feature parity/testing across Android and web. This continuation does not claim the 17-page mission complete.
@@ -99,6 +99,12 @@ The sidebar does not claim routes for unfinished modules. The end-to-end 17-page
 - Added a dedicated manual barcode input to Android cashier. It accepts keyboard-wedge scanner input, normalizes Arabic digits, looks up the exact barcode on Enter or button tap, adds the result to the invoice, and clears the field on success. Camera scanning remains optional.
 - Updated `.gitignore` to ignore Markdown files, APK/AAB artifacts, Gradle/build/cache directories, and common language/tool caches. Existing tracked Markdown files remain tracked; ignore rules affect untracked/new Markdown files.
 - Verification: `:app:compileDevelopmentDebugKotlin` passed and `assembleDebug` succeeded for development, production, and staging (129 tasks, 7m28s). No device installation/runtime test was run.
+
+## Live web camera scanner - 2026-11-18
+
+- Replaced the web photo-capture fallback with a live `getUserMedia` stream request made when the user opens the camera scanner. It does not enumerate devices first; after the browser grants permission, ZXing decodes directly from the live stream. Camera tracks stop when a barcode is read or the modal closes. Camera permission failures have Arabic explanations; manual/keyboard-wedge scanning remains available.
+- Browser camera permission is controlled by the browser security model and cannot be forced by application code. `getUserMedia` is available only in secure contexts such as HTTPS and localhost; ordinary insecure HTTP does not expose `navigator.mediaDevices`. This makes live camera use impossible on those origins, while connected scanners that type into the cashier search remain usable.
+- Verification: cashier scanner feature tests passed (2 tests); `node --check resources/js/app.js` passed; Vite production build passed (306 modules; existing large-chunk warning). Camera hardware/permission behavior still needs an actual browser/device check.
 
 
 ## Sidebar navigation follow-up - 2026-11-18

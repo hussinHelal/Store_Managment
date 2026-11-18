@@ -10,61 +10,23 @@ window.Chart = Chart;
 window.createBarcodeScanner = function (video, onScan, onError, onReady = () => {}) {
     let active = true;
     let controls = null;
-    let fallbackButton = null;
-    let fallbackInput = null;
-    let imageUrl = null;
-    let reader = null;
-    const enablePhotoFallback = () => {
-        if (!active || fallbackInput) return;
-        video.dataset.scanMode = 'photo';
-        video.classList.add('d-none');
-        fallbackButton = document.createElement('button');
-        fallbackButton.type = 'button';
-        fallbackButton.className = 'btn btn-outline-primary w-100 mt-2';
-        fallbackButton.textContent = 'التقاط صورة للباركود بالكاميرا';
-        fallbackInput = document.createElement('input');
-        fallbackInput.type = 'file';
-        fallbackInput.accept = 'image/*';
-        fallbackInput.setAttribute('capture', 'environment');
-        fallbackInput.className = 'visually-hidden';
-        fallbackInput.addEventListener('change', async () => {
-            const file = fallbackInput?.files?.[0];
-            if (!file || !active) return;
-            if (imageUrl) URL.revokeObjectURL(imageUrl);
-            imageUrl = URL.createObjectURL(file);
-            try {
-                const result = await reader.decodeFromImageUrl(imageUrl);
-                if (!active) return;
-                const barcode = result.getText().trim();
-                if (barcode) { stop(); onScan(barcode); }
-            } catch {
-                if (active) onError(new Error('تعذرت قراءة الباركود من الصورة. أعد التقاط صورة أو استخدم البحث اليدوي.'));
-            }
-        });
-        fallbackButton.addEventListener('click', () => fallbackInput?.click());
-        video.insertAdjacentElement('afterend', fallbackButton);
-        fallbackButton.insertAdjacentElement('afterend', fallbackInput);
-        onReady();
-    };
+    let stream = null;
     const stop = () => {
         active = false;
         controls?.stop();
         controls = null;
-        fallbackButton?.remove();
-        fallbackInput?.remove();
-        fallbackButton = null;
-        fallbackInput = null;
-        if (imageUrl) URL.revokeObjectURL(imageUrl);
-        imageUrl = null;
-        video.srcObject?.getTracks().forEach(track => track.stop());
+        stream?.getTracks().forEach(track => track.stop());
+        stream = null;
         video.pause();
         video.srcObject = null;
-        video.classList.remove('d-none');
         delete video.dataset.scanMode;
     };
     (async () => {
         try {
             const mediaDevices = navigator.mediaDevices;
+            if (!mediaDevices || typeof mediaDevices.getUserMedia !== 'function') {
+                throw new Error('المتصفح لا يتيح الكاميرا الحية لهذا العنوان. افتح الموقع عبر HTTPS أو localhost واسمح للمتصفح باستخدام الكاميرا.');
+            }
             const [{ BrowserMultiFormatReader, BarcodeFormat }, { DecodeHintType }] = await Promise.all([
                 import('@zxing/browser'), import('@zxing/library'),
             ]);
@@ -73,11 +35,7 @@ window.createBarcodeScanner = function (video, onScan, onError, onReady = () => 
                 [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.CODE_93, BarcodeFormat.ITF, BarcodeFormat.CODABAR, BarcodeFormat.QR_CODE]],
                 [DecodeHintType.TRY_HARDER, true],
             ]);
-            reader = new BrowserMultiFormatReader(hints);
-            if (!mediaDevices || typeof mediaDevices.getUserMedia !== 'function') {
-                enablePhotoFallback();
-                return;
-            }
+            const reader = new BrowserMultiFormatReader(hints);
             const onDecode = (result, error) => {
                 if (!active) return;
                 if (result) {
@@ -89,38 +47,31 @@ window.createBarcodeScanner = function (video, onScan, onError, onReady = () => 
                     stop(); onError(error);
                 }
             };
-            let lastError = null;
-            for (const constraints of [
-                { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } },
-                { audio: false, video: true },
-            ]) {
-                try {
-                    controls = await reader.decodeFromConstraints(constraints, video, onDecode);
-                    lastError = null;
-                    break;
-                } catch (error) {
-                    lastError = error;
-                    if (!active) return;
-                }
-            }
-            if (lastError) throw lastError;
-            if (!active) { controls?.stop(); return; }
+            // Call getUserMedia directly so the browser requests camera permission without
+            // enumerating devices first. Enumeration is unsupported in some embedded browsers.
+            stream = await mediaDevices.getUserMedia({
+                audio: false,
+                video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+            });
+            if (!active) { stream.getTracks().forEach(track => track.stop()); return; }
+            controls = await reader.decodeFromStream(stream, video, onDecode);
+            if (!active) { controls.stop(); return; }
             video.dataset.scanMode = 'live';
             onReady();
         } catch (error) {
             if (!active) return;
             stop();
-            if (reader) {
-                active = true;
-                enablePhotoFallback();
-                return;
-            }
-            onError(error instanceof Error ? error : new Error('تعذر تشغيل قارئ الباركود. استخدم البحث اليدوي.'));
+            const cameraErrors = {
+                NotAllowedError: 'لم يسمح المتصفح باستخدام الكاميرا. اسمح بها من إعدادات الموقع ثم أعد المحاولة.',
+                NotFoundError: 'لم يتم العثور على كاميرا متاحة في هذا الجهاز.',
+                NotReadableError: 'تعذر فتح الكاميرا. أغلق التطبيقات الأخرى التي تستخدمها ثم أعد المحاولة.',
+                OverconstrainedError: 'الكاميرا لا تدعم إعدادات الفيديو المطلوبة.',
+            };
+            onError(cameraErrors[error?.name] ? new Error(cameraErrors[error.name]) : error instanceof Error ? error : new Error('تعذر تشغيل قارئ الباركود. تحقق من إذن الكاميرا أو استخدم قارئًا متصلًا.'));
         }
     })();
     return { stop };
-};
-document.addEventListener('DOMContentLoaded', () => {
+};document.addEventListener('DOMContentLoaded', () => {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 });

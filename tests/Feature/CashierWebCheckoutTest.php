@@ -12,7 +12,7 @@ class CashierWebCheckoutTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_cashier_success_and_barcode_ui_filter_empty_nodes_and_offer_manual_scanning(): void
+    public function test_cashier_success_and_barcode_ui_filter_empty_nodes_and_request_live_camera_permission(): void
     {
         $this->withoutVite();
         config([
@@ -32,8 +32,11 @@ class CashierWebCheckoutTest extends TestCase
 
         $scanner = file_get_contents(resource_path('js/app.js'));
         self::assertStringContainsString("typeof mediaDevices.getUserMedia !== 'function'", $scanner);
-        self::assertStringContainsString("fallbackInput.setAttribute('capture', 'environment')", $scanner);
-        self::assertStringContainsString('reader.decodeFromImageUrl(imageUrl)', $scanner);
+        self::assertStringContainsString('stream = await mediaDevices.getUserMedia({', $scanner);
+        self::assertStringContainsString('reader.decodeFromStream(stream, video, onDecode)', $scanner);
+        self::assertStringNotContainsString('enumerateDevices', $scanner);
+        self::assertStringNotContainsString('decodeFromConstraints', $scanner);
+        self::assertStringNotContainsString('decodeFromImageUrl', $scanner);
     }
 
     public function test_cashier_success_response_contains_only_named_checkout_fields(): void
