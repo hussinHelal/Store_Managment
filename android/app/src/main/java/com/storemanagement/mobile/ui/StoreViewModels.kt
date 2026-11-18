@@ -7,6 +7,11 @@ import com.storemanagement.mobile.core.database.CachedCategory
 import com.storemanagement.mobile.core.database.CachedProduct
 import com.storemanagement.mobile.core.network.ApiPage
 import com.storemanagement.mobile.core.network.ApiResult
+import com.storemanagement.mobile.core.network.BranchStockDto
+import com.storemanagement.mobile.core.network.StockAdjustmentInputDto
+import com.storemanagement.mobile.core.network.StockMovementDto
+import com.storemanagement.mobile.core.network.TrackedDeviceDto
+import com.storemanagement.mobile.core.network.TrackedDeviceInputDto
 import com.storemanagement.mobile.core.network.CategoryInputDto
 import com.storemanagement.mobile.core.network.CategoryDto
 import com.storemanagement.mobile.core.network.CustomerDto
@@ -22,7 +27,11 @@ import com.storemanagement.mobile.core.network.ProductDto
 import com.storemanagement.mobile.core.network.ProductInputDto
 import com.storemanagement.mobile.core.network.SupplierDto
 import com.storemanagement.mobile.core.network.SupplierInputDto
+import com.storemanagement.mobile.core.network.SupplierStatementDto
+import com.storemanagement.mobile.core.network.SupplierReceiptProductDto
+import com.storemanagement.mobile.core.network.PurchaseReceiptInputDto
 import com.storemanagement.mobile.core.network.SoldProductDto
+import com.storemanagement.mobile.core.network.SalesReportDto
 import com.storemanagement.mobile.core.network.NotificationDto
 import com.storemanagement.mobile.core.network.MaintenanceDto
 import com.storemanagement.mobile.core.network.MaintenanceInputDto
@@ -157,6 +166,13 @@ data class InvoiceDetailUiState(
 
 data class SupplierDetailUiState(
     val supplier: SupplierDto? = null,
+    val statement: SupplierStatementDto? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null,
+)
+
+data class SalesReportUiState(
+    val report: SalesReportDto? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
 )
@@ -285,6 +301,8 @@ class StoreViewModel @Inject constructor(
     val customers = mutableCustomers
     private val mutableSales = MutableStateFlow(RemotePage<SoldProductDto>())
     val sales = mutableSales
+    private val mutableSalesReport = MutableStateFlow(SalesReportUiState())
+    val salesReport = mutableSalesReport
     private val mutableNotifications = MutableStateFlow(RemotePage<NotificationDto>())
     val notifications = mutableNotifications
     private val mutableMaintenances = MutableStateFlow(RemotePage<MaintenanceDto>())
@@ -309,6 +327,13 @@ class StoreViewModel @Inject constructor(
     val damagedItems = mutableDamagedItems
     private val mutableDamagedProducts = MutableStateFlow(DamagedProductsUiState())
     val damagedProducts = mutableDamagedProducts
+    private var trackedDeviceRequest: Job? = null
+    private val mutableTrackedDevices = MutableStateFlow(RemotePage<TrackedDeviceDto>())
+    val trackedDevices = mutableTrackedDevices
+    private val mutableBranchStock = MutableStateFlow(RemotePage<BranchStockDto>())
+    val branchStock = mutableBranchStock
+    private val mutableStockMovements = MutableStateFlow(RemotePage<StockMovementDto>())
+    val stockMovements = mutableStockMovements
     private val mutableProductPage = MutableStateFlow(RemotePage<ProductDto>())
     val productPage = mutableProductPage
     private val mutableProductDetails = MutableStateFlow(ProductDetailUiState())
@@ -317,6 +342,8 @@ class StoreViewModel @Inject constructor(
     val invoiceDetails = mutableInvoiceDetails
     private val mutableSupplierDetails = MutableStateFlow(SupplierDetailUiState())
     val supplierDetails = mutableSupplierDetails
+    private val mutableSupplierReceiptProducts = MutableStateFlow(RemotePage<SupplierReceiptProductDto>())
+    val supplierReceiptProducts = mutableSupplierReceiptProducts
     private val mutableCategoryDetails = MutableStateFlow(CategoryDetailUiState())
     val categoryDetails = mutableCategoryDetails
     private val mutableCustomerDetails = MutableStateFlow(CustomerDetailUiState())
@@ -529,6 +556,19 @@ class StoreViewModel @Inject constructor(
                 is ApiResult.Failure -> {
                     notifySessionExpiry(result.error)
                     mutableSales.value.copy(isLoading = false, error = result.error.message)
+                }
+            }
+        }
+    }
+
+    fun refreshSalesReport(from: String, to: String, groupBy: String, paymentStatus: String? = null) {
+        viewModelScope.launch {
+            mutableSalesReport.value = mutableSalesReport.value.copy(isLoading = true, error = null)
+            mutableSalesReport.value = when (val result = storeRepository.salesReport(from, to, groupBy, paymentStatus = paymentStatus)) {
+                is ApiResult.Success -> SalesReportUiState(report = result.value)
+                is ApiResult.Failure -> {
+                    notifySessionExpiry(result.error)
+                    mutableSalesReport.value.copy(isLoading = false, error = result.error.message)
                 }
             }
         }
@@ -757,6 +797,83 @@ class StoreViewModel @Inject constructor(
                     ProfileUiState(error = result.error.message)
                 }
             }
+        }
+    }
+
+    fun refreshTrackedDevices(query: String? = null, status: String? = null, page: Int = 1) {
+        trackedDeviceRequest?.cancel()
+        trackedDeviceRequest = viewModelScope.launch {
+            mutableTrackedDevices.value = mutableTrackedDevices.value.copy(isLoading = true, error = null)
+            when (val result = storeRepository.trackedDevices(query, status, page)) {
+                is ApiResult.Success -> {
+                    val loaded = result.value.toRemotePage()
+                    mutableTrackedDevices.value = if (page == 1) loaded else mutableTrackedDevices.value.appendPage(loaded, TrackedDeviceDto::id)
+                }
+                is ApiResult.Failure -> {
+                    notifySessionExpiry(result.error)
+                    mutableTrackedDevices.value = mutableTrackedDevices.value.copy(isLoading = false, error = result.error.message)
+                }
+            }
+        }
+    }
+
+    fun loadMoreTrackedDevices(query: String? = null, status: String? = null) {
+        val page = mutableTrackedDevices.value
+        if (!page.isLoading && page.currentPage < page.lastPage) refreshTrackedDevices(query, status, page.currentPage + 1)
+    }
+
+    fun saveTrackedDevice(id: Long?, key: String, input: TrackedDeviceInputDto) {
+        viewModelScope.launch {
+            val success = if (id == null) reportOperation("\u062a\u0645 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062c\u0647\u0627\u0632.") { storeRepository.createTrackedDevice(key, input) }
+            else reportOperation("\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062c\u0647\u0627\u0632.") { storeRepository.updateTrackedDevice(id, key, input) }
+            if (success) refreshTrackedDevices()
+        }
+    }
+
+    fun deleteTrackedDevice(id: Long) {
+        viewModelScope.launch {
+            if (reportOperation("\u062a\u0645 \u062d\u0630\u0641 \u0633\u062c\u0644 \u0627\u0644\u062c\u0647\u0627\u0632.") { storeRepository.deleteTrackedDevice(id, UUID.randomUUID().toString()) }) refreshTrackedDevices()
+        }
+    }
+
+    fun refreshBranchStock(query: String? = null, includeMovements: Boolean = true) {
+        if (!includeMovements) {
+            mutableStockMovements.value = RemotePage()
+        }
+        viewModelScope.launch {
+            mutableBranchStock.value = mutableBranchStock.value.copy(isLoading = true, error = null)
+            mutableBranchStock.value = when (val result = storeRepository.branchStock(query)) {
+                is ApiResult.Success -> result.value.toRemotePage()
+                is ApiResult.Failure -> {
+                    notifySessionExpiry(result.error)
+                    mutableBranchStock.value.copy(isLoading = false, error = result.error.message)
+                }
+            }
+        }
+        if (includeMovements) viewModelScope.launch {
+            mutableStockMovements.value = mutableStockMovements.value.copy(isLoading = true, error = null)
+            mutableStockMovements.value = when (val result = storeRepository.stockMovements()) {
+                is ApiResult.Success -> result.value.toRemotePage()
+                is ApiResult.Failure -> {
+                    notifySessionExpiry(result.error)
+                    mutableStockMovements.value.copy(isLoading = false, error = result.error.message)
+                }
+            }
+        }
+    }
+
+    fun adjustBranchStock(item: BranchStockDto, delta: Int, reason: String) {
+        if (delta == 0 || reason.trim().length < 5) {
+            viewModelScope.launch { mutableEvents.emit(StoreEvent.Failed("أدخل كمية تعديل غير صفرية وسبباً من خمسة أحرف على الأقل.")) }
+            return
+        }
+        viewModelScope.launch {
+            if (reportOperation("تم تسجيل حركة المخزون.") {
+                    storeRepository.adjustStock(
+                        UUID.randomUUID().toString(),
+                        StockAdjustmentInputDto(item.branchId, item.productId, delta, reason.trim()),
+                    )
+                }) refreshBranchStock(includeMovements = false)
         }
     }
 
@@ -997,8 +1114,8 @@ class StoreViewModel @Inject constructor(
         supplierDetailsRequest?.cancel()
         mutableSupplierDetails.value = SupplierDetailUiState(isLoading = true)
         supplierDetailsRequest = viewModelScope.launch {
-            mutableSupplierDetails.value = when (val result = storeRepository.supplierDetails(id)) {
-                is ApiResult.Success -> SupplierDetailUiState(supplier = result.value)
+            mutableSupplierDetails.value = when (val result = storeRepository.supplierStatement(id)) {
+                is ApiResult.Success -> SupplierDetailUiState(supplier = result.value.supplier, statement = result.value)
                 is ApiResult.Failure -> {
                     notifySessionExpiry(result.error)
                     SupplierDetailUiState(error = result.error.message)
@@ -1010,6 +1127,31 @@ class StoreViewModel @Inject constructor(
     fun clearSupplierDetails() {
         supplierDetailsRequest?.cancel()
         mutableSupplierDetails.value = SupplierDetailUiState()
+    }
+
+    fun refreshSupplierReceiptProducts(query: String? = null) {
+        viewModelScope.launch {
+            mutableSupplierReceiptProducts.value = mutableSupplierReceiptProducts.value.copy(isLoading = true, error = null)
+            mutableSupplierReceiptProducts.value = when (val result = storeRepository.supplierReceiptProducts(query)) {
+                is ApiResult.Success -> result.value.toRemotePage()
+                is ApiResult.Failure -> {
+                    notifySessionExpiry(result.error)
+                    mutableSupplierReceiptProducts.value.copy(isLoading = false, error = result.error.message)
+                }
+            }
+        }
+    }
+
+    fun createSupplierReceipt(supplierId: Long, input: PurchaseReceiptInputDto, key: String) {
+        viewModelScope.launch {
+            if (reportOperation("تم استلام الفاتورة وتحديث مخزون الفرع.") {
+                    storeRepository.createSupplierReceipt(supplierId, key, input)
+                }) {
+                loadSupplierDetails(supplierId)
+                refreshSuppliers(null)
+                refreshSupplierReceiptProducts()
+            }
+        }
     }
 
     fun loadCategoryDetails(id: Long) {

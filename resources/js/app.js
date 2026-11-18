@@ -10,91 +10,65 @@ window.Chart = Chart;
 window.createBarcodeScanner = function (video, onScan, onError, onReady = () => {}) {
     let active = true;
     let controls = null;
-
     const stop = () => {
         active = false;
         controls?.stop();
         controls = null;
-
-        const stream = video.srcObject;
-        stream?.getTracks().forEach((track) => track.stop());
+        video.srcObject?.getTracks().forEach(track => track.stop());
         video.pause();
         video.srcObject = null;
     };
-
     (async () => {
         try {
+            const mediaDevices = navigator.mediaDevices;
+            if (!mediaDevices || typeof mediaDevices.getUserMedia !== 'function') {
+                throw new Error('الكاميرا غير متاحة في هذا المتصفح أو الاتصال. استخدم قارئ باركود متصلًا أو حقل البحث اليدوي.');
+            }
             const [{ BrowserMultiFormatReader, BarcodeFormat }, { DecodeHintType }] = await Promise.all([
-                import('@zxing/browser'),
-                import('@zxing/library'),
+                import('@zxing/browser'), import('@zxing/library'),
             ]);
             if (!active) return;
-
-            const cameras = await BrowserMultiFormatReader.listVideoInputDevices();
-            const preferredCamera = cameras.find((camera) => /rear|back|environment/i.test(camera.label)) ?? cameras[0];
-            if (!preferredCamera) throw new Error('لم يتم العثور على كاميرا متاحة.');
-
             const hints = new Map([
-                [DecodeHintType.POSSIBLE_FORMATS, [
-                    BarcodeFormat.EAN_13,
-                    BarcodeFormat.EAN_8,
-                    BarcodeFormat.UPC_A,
-                    BarcodeFormat.UPC_E,
-                    BarcodeFormat.CODE_128,
-                    BarcodeFormat.CODE_39,
-                    BarcodeFormat.CODE_93,
-                    BarcodeFormat.ITF,
-                    BarcodeFormat.CODABAR,
-                    BarcodeFormat.QR_CODE,
-                ]],
+                [DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.CODE_93, BarcodeFormat.ITF, BarcodeFormat.CODABAR, BarcodeFormat.QR_CODE]],
                 [DecodeHintType.TRY_HARDER, true],
             ]);
             const reader = new BrowserMultiFormatReader(hints);
-            controls = await reader.decodeFromConstraints({
-                audio: false,
-                video: {
-                    deviceId: { exact: preferredCamera.deviceId },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                },
-            }, video, (result, error) => {
+            const onDecode = (result, error) => {
                 if (!active) return;
                 if (result) {
                     const barcode = result.getText().trim();
-                    if (!barcode) return;
-
-                    stop();
-                    onScan(barcode);
+                    if (barcode) { stop(); onScan(barcode); }
                     return;
                 }
-
-                const decodeMiss = error && (
-                    ['NotFoundException', 'ChecksumException', 'FormatException'].includes(error.name)
-                    || /No MultiFormat Readers were able to detect/i.test(error.message || '')
-                );
-                if (decodeMiss) return;
-
                 if (error && !['NotFoundException', 'ChecksumException', 'FormatException'].includes(error.name)) {
-                    stop();
-                    onError(error);
+                    stop(); onError(error);
                 }
-            });
-
-            if (!active) {
-                controls.stop();
-                return;
+            };
+            let lastError = null;
+            for (const constraints of [
+                { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } },
+                { audio: false, video: true },
+            ]) {
+                try {
+                    controls = await reader.decodeFromConstraints(constraints, video, onDecode);
+                    lastError = null;
+                    break;
+                } catch (error) {
+                    lastError = error;
+                    if (!active) return;
+                }
             }
+            if (lastError) throw lastError;
+            if (!active) { controls?.stop(); return; }
             onReady();
         } catch (error) {
             if (!active) return;
             stop();
-            onError(error);
+            onError(error instanceof Error ? error : new Error('تعذر تشغيل قارئ الباركود. استخدم البحث اليدوي.'));
         }
     })();
-
     return { stop };
 };
-
 document.addEventListener('DOMContentLoaded', () => {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));

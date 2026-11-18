@@ -13,6 +13,10 @@ class ProductResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'price' => number_format((int) round((float) $this->price * 100) / 100, 2, '.', ''),
+            'cost_price' => $this->when(
+                $request->user()?->can('page.products.manage'),
+                $this->cost_price === null ? null : number_format((int) round((float) $this->cost_price * 100) / 100, 2, '.', ''),
+            ),
             'description' => $this->description,
             'notes' => $this->notes,
             'barcode' => $this->barcode,

@@ -26,6 +26,12 @@ final class ApiPermissionMap
             }
         }
 
+        foreach (config('access.extra_permissions', []) as $permission) {
+            if ($user->can($permission)) {
+                $abilities[] = $permission;
+            }
+        }
+
         return array_values(array_unique($abilities));
     }
 

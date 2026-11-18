@@ -10,13 +10,15 @@
     if (old('product_ids')) {
         $oldProductIds = old('product_ids');
         $oldQuantities = old('quantities', []);
+        $oldProductNames = old('product_names', []);
+        $oldUnitPrices = old('unit_prices', []);
         foreach ($oldProductIds as $index => $productId) {
             $product = $products->firstWhere('id', $productId);
             $installmentItems[] = [
                 'product_id' => $productId,
                 'quantity'   => intval($oldQuantities[$index] ?? 1),
-                'price'      => $product?->price ?? 0,
-                'name'       => $product?->name ?? '',
+                'price'      => $oldUnitPrices[$index] ?? $product?->price ?? 0,
+                'name'       => $oldProductNames[$index] ?? $product?->name ?? '',
             ];
         }
     } else {
@@ -132,15 +134,20 @@
               <label class="form-label">المنتج</label>
               <div class="position-relative">
                 <input type="text" class="form-control product-search" autocomplete="off" placeholder="اكتب حرفين للبحث عن منتج" value="${escapeHtml(initialName)}" aria-expanded="false">
-                <input type="hidden" name="product_ids[]" class="product-id" value="${escapeHtml(item.product_id || '')}" data-price="${escapeHtml(initialPrice)}">
+                <input type="hidden" name="product_ids[]" class="product-id" value="${escapeHtml(item.product_id || '')}">
+                <input type="hidden" name="product_names[]" class="product-name" value="${escapeHtml(initialName)}">
                 <div class="list-group installment-product-results shadow d-none" role="listbox"></div>
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <label class="form-label">الكمية</label>
-              <input type="number" name="quantities[]" class="form-control item-quantity" min="1" value="${escapeHtml(item.quantity)}">
+              <input type="number" name="quantities[]" class="form-control item-quantity" inputmode="numeric" min="1" step="1" value="${escapeHtml(item.quantity)}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+              <label class="form-label">سعر الوحدة</label>
+              <input type="number" name="unit_prices[]" class="form-control item-price" inputmode="decimal" min="0" step="0.01" value="${escapeHtml(initialPrice)}">
+            </div>
+            <div class="col-md-2">
               <label class="form-label">المجموع</label>
               <input type="text" readonly class="form-control line-total-input" value="${formatPrice(item.price * item.quantity)}">
             </div>
@@ -159,7 +166,9 @@
 
             function selectProduct(product) {
               productIdInput.value = product.id;
-              productIdInput.dataset.price = product.price;
+              productIdInput.value = product.id;
+              row.querySelector('.product-name').value = product.name;
+              row.querySelector('.item-price').value = product.price;
               searchInput.value = product.name;
               searchInput.setAttribute('aria-expanded', 'false');
               results.classList.add('d-none');
@@ -231,7 +240,7 @@
 
             searchInput.addEventListener('input', () => {
               productIdInput.value = '';
-              productIdInput.dataset.price = '0';
+              row.querySelector('.product-name').value = searchInput.value.trim();
               lineTotalInput.value = '0.00';
               updateInstallmentTotals();
               clearTimeout(searchTimer);
@@ -246,9 +255,13 @@
           });
 
           quantityInput.addEventListener('input', () => {
-              lineTotalInput.value = formatPrice(parseFloat(productIdInput.dataset.price || 0) * parseInt(quantityInput.value || 0));
+              lineTotalInput.value = formatPrice(parseFloat(row.querySelector('.item-price').value || 0) * parseInt(quantityInput.value || 0));
               updateInstallmentTotals();
           });
+            row.querySelector('.item-price').addEventListener('input', () => {
+              lineTotalInput.value = formatPrice(parseFloat(row.querySelector('.item-price').value || 0) * parseInt(quantityInput.value || 0));
+              updateInstallmentTotals();
+            });
 
             searchInput.addEventListener('keydown', event => {
               if (event.key === 'Escape') {
@@ -272,7 +285,7 @@
           installmentItemsContainer.appendChild(row);
             if (item.product_id && !selectedProduct) {
               productIdInput.value = item.product_id;
-              productIdInput.dataset.price = initialPrice;
+              row.querySelector('.product-name').value = initialName;
           }
       }
 

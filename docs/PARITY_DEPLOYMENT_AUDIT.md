@@ -2,6 +2,8 @@
 
 Date: 2026-11-17. Scope: source and route inspection plus baseline PHPUnit run; no live user flows, production database, hosted deployment, or Android build was exercised.
 
+**Status update:** this is the original audit snapshot. For the 2026-11-18 repairs, latest test totals, and current 17-page matrix, see [FINAL_REPORT.md](FINAL_REPORT.md) and [BUGFIX_REPORT.md](BUGFIX_REPORT.md); those reports supersede the older test and UI-fix notes below.
+
 ## Current conclusion
 
 The product is a working multi-client Laravel application, but it is not at parity across web, API, and Android. The web app has materially more workflows than Android and the API. The 17 pages listed in the mission prompt remain mostly absent. Do not treat deployment as production-ready yet.
@@ -82,3 +84,23 @@ The full field-level implementation matrix is not yet complete for every view an
 - [Coolify persistent storage](https://coolify.io/docs/applications/configuration/persistent-storage) (container data is replaceable unless mounted).
 - [Coolify health checks](https://coolify.io/docs/applications/configuration/health-checks) (readiness configuration and container checks).
 
+
+
+## Implementation update ? 2026-11-18
+
+The opening table above is a historical baseline, not the current state. Pages 1?5 and 15 now have substantial backend/web/API work and partially implemented Android screens; see `docs/FINAL_REPORT.md` for precise gaps. Page 6 now has a tracked-device migration, permission grant, transactional CRUD service, Arabic web page, paginated permission-gated/idempotent API, OpenAPI entry, and Arabic Android source flow. Product deletion checks tracked-device history in web and API handlers. Targeted device tests pass. The full Laravel suite passes (177 tests / 1,172 assertions). Android compilation remains NOT VERIFIED because Gradle distribution download failed under network restrictions. Pages 7?14, 16, and 17, Android stocktake/transfers, and the whole-project hidden-bug audit remain outstanding.
+
+
+### Cashier, camera and navigation follow-up - 2026-11-18
+
+Cashier optional success rows are filtered before DOM insertion; barcode camera capability is checked before ZXing and the Arabic cashier modal accepts manual barcode input. The scanner still needs physical-device verification over HTTPS. Maintenance list rows now include the device image thumbnail, and the sidebar groups implemented pages under Arabic categories. Full Laravel verification is now 177 passed / 1,172 assertions; Android compilation and production deployment remain unverified. The mission page matrix remains authoritative for incomplete modules.
+
+
+## Product cost schema incident - 2026-11-18
+
+The configured `phoneStore` MySQL database reports the branch-stock, product-cost/purchase-receipt, invoice-item snapshot, tracked-device, and used-phone migrations as pending. Laravel logs confirm the product edit 500 was `Unknown column 'cost_price'`; an earlier product creation also failed because `branches` does not exist. Product cost labels and currency output now use Arabic/EGP. Web cost inputs are disabled with migration guidance when the column is absent; API cost writes return a validation response instead of a database 500. API product listing and supplier receipt-product lookup omit the missing column safely. No migration or data change was run against the configured database, per `docs/DECISIONS.md`. A backup and reviewed migration execution on a throwaway/staging database remain required before those capabilities can be enabled locally or in production.
+
+
+## Installation appointment module - 2026-11-18
+
+The appointment module now has an Arabic responsive CRUD page, searchable/date/status filters, full edit/create forms, technician assignment, duration, completion timestamps, and permission-gated idempotent API mutations. Technician time conflicts are checked transactionally, serializing concurrent bookings on the technician row. Tests cover CRUD, API replay, and overlapping schedules. Android appointment parity remains outstanding. Its two new migrations are pending on the configured `phoneStore` database; this environment did not alter that database.

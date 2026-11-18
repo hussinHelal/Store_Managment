@@ -19,12 +19,17 @@ object DatabaseModule {
             db.execSQL("ALTER TABLE cached_products ADD COLUMN notes TEXT")
         }
     }
+    private val migration2To3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE cached_products ADD COLUMN costPrice TEXT")
+        }
+    }
 
     @Provides
     @Singleton
     fun provideCatalogDatabase(@ApplicationContext context: Context): CatalogDatabase =
         Room.databaseBuilder(context, CatalogDatabase::class.java, "store-catalog.db")
-            .addMigrations(migration1To2)
+            .addMigrations(migration1To2, migration2To3)
             .build()
 
     @Provides

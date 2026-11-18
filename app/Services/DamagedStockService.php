@@ -40,7 +40,9 @@ class DamagedStockService
             }
 
             $quantity = (int) $data['quantity'];
-            $stock = (int) $product->stock;
+            $branchId = app(CurrentBranch::class)->id($user);
+            app(StockService::class)->initializeBranch((int) $product->id, $branchId);
+            $stock = (int) DB::table('branch_stock')->where('branch_id', $branchId)->where('product_id', $product->id)->value('quantity');
 
             if ($quantity < 1) {
                 $this->fail('quantity', 'الكمية يجب أن تكون 1 على الأقل.');
@@ -73,8 +75,15 @@ class DamagedStockService
                 'created_by_name' => $user->name,
             ]);
 
-            $product->stock = $stock - $quantity;
-            $product->save();
+            app(StockService::class)->decrease(
+                (int) $product->id,
+                $quantity,
+                'damage',
+                $user,
+                'تسجيل هالك: '.$data['reason'],
+                $item,
+                branchId: $branchId,
+            );
 
             $this->audit($user, 'damaged.recorded', $item->id, [
                 'product_id' => $product->id,
@@ -118,11 +127,21 @@ class DamagedStockService
                 if (! $product) {
                     $this->fail('quantity', 'المنتج لم يعد موجوداً، لا يمكن تغيير الكمية. ألغِ السجل بدلاً من ذلك.');
                 }
-                if ($delta > (int) $product->stock) {
-                    $this->fail('quantity', 'الزيادة أكبر من المخزون المتاح ('.(int) $product->stock.').');
+                $branchId = app(CurrentBranch::class)->id($user);
+                app(StockService::class)->initializeBranch((int) $product->id, $branchId);
+                $available = (int) DB::table('branch_stock')->where('branch_id', $branchId)->where('product_id', $product->id)->value('quantity');
+                if ($delta > $available) {
+                    $this->fail('quantity', 'الزيادة أكبر من المخزون المتاح في الفرع ('.$available.').');
                 }
-                $product->stock = (int) $product->stock - $delta;
-                $product->save();
+                app(StockService::class)->change(
+                    (int) $product->id,
+                    -$delta,
+                    'damage_adjust',
+                    $user,
+                    'تصحيح كمية الهالك للسجل '.$locked->id,
+                    $locked,
+                    branchId: $branchId,
+                );
             }
 
             $unitCents = isset($data['unit_value']) && $data['unit_value'] !== ''
@@ -184,8 +203,15 @@ class DamagedStockService
 
             // If the product was deleted meanwhile there is no stock row to restore.
             if ($product) {
-                $product->stock = (int) $product->stock + $locked->quantity;
-                $product->save();
+                app(StockService::class)->increase(
+                    (int) $product->id,
+                    (int) $locked->quantity,
+                    'damage_void',
+                    $user,
+                    'إلغاء سجل الهالك '.$locked->id.': '.$reason,
+                    $locked,
+                    branchId: app(CurrentBranch::class)->id($user),
+                );
             }
 
             $locked->forceFill([

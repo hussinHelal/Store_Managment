@@ -10,6 +10,8 @@ class invoice extends Model
         'invoice_number',
         'customer',
         'product_id',
+        'cashier_id',
+        'branch_id',
         'paid_amount',
         'quantity',
         'invoice_date',
@@ -21,21 +23,26 @@ class invoice extends Model
     ];
 
     protected $casts = [
-        'items'        => 'array',
+        'items' => 'array',
         'invoice_date' => 'date',
         'total_amount' => 'decimal:2',
-        'product_price'=> 'decimal:2',
-        'paid_amount'  => 'decimal:2',
+        'product_price' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
     ];
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'cashier_id');
     }
 
     public function payments()
     {
         return $this->hasMany(payments::class);
+    }
+
+    public function lines()
+    {
+        return $this->hasMany(InvoiceItem::class, 'invoice_id');
     }
 
     public function payments_count()
@@ -55,7 +62,7 @@ class invoice extends Model
 
     public function getItemNamesAttribute()
     {
-        if (!is_array($this->items)) {
+        if (! is_array($this->items)) {
             return $this->product?->name ?? '';
         }
 
@@ -64,7 +71,7 @@ class invoice extends Model
 
     public function getItemQuantityAttribute()
     {
-        if (!is_array($this->items)) {
+        if (! is_array($this->items)) {
             return $this->quantity;
         }
 

@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\Models\AppNotification;
+use App\Models\installments;
 use App\Models\invoice;
 use App\Models\products;
+use App\Models\User;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -30,15 +33,15 @@ class InvoiceCreationService
             foreach ($data['product_ids'] as $index => $productId) {
                 $quantity = (int) $data['quantities'][$index];
                 $product = $lockedProducts->get($productId);
-                $priceCents = (int) round((float) $product->price * 100);
+                $priceCents = Money::cents($product->price);
                 $lineTotalCents = $priceCents * $quantity;
 
                 $items[] = [
                     'product_id' => $product->id,
                     'name' => $product->name,
-                    'price' => number_format($priceCents / 100, 2, '.', ''),
+                    'price' => Money::decimal($priceCents),
                     'quantity' => $quantity,
-                    'line_total' => number_format($lineTotalCents / 100, 2, '.', ''),
+                    'line_total' => Money::decimal($lineTotalCents),
                 ];
 
                 $quantitiesByProduct[$product->id] = ($quantitiesByProduct[$product->id] ?? 0) + $quantity;
@@ -54,7 +57,7 @@ class InvoiceCreationService
                 }
             }
 
-            $paidCents = (int) round((float) $data['paid_amount'] * 100);
+            $paidCents = Money::cents($data['paid_amount']);
             if ($paidCents > $totalCents) {
                 throw ValidationException::withMessages(['paid_amount' => 'لا يمكن أن يتجاوز المبلغ المدفوع إجمالي الفاتورة.']);
             }
@@ -64,13 +67,15 @@ class InvoiceCreationService
             } while (invoice::query()->where('invoice_number', $invoiceNumber)->exists());
 
             $firstProduct = $lockedProducts->get($data['product_ids'][0]);
-            $totalAmount = number_format($totalCents / 100, 2, '.', '');
-            $paidAmount = number_format($paidCents / 100, 2, '.', '');
+            $totalAmount = Money::decimal($totalCents);
+            $paidAmount = Money::decimal($paidCents);
 
             $invoice = invoice::create([
                 'invoice_number' => $invoiceNumber,
                 'customer' => $data['customer'],
                 'product_id' => $firstProduct->id,
+                'cashier_id' => $userId,
+                'branch_id' => app(CurrentBranch::class)->id(User::query()->find($userId)),
                 'quantity' => $totalQuantity,
                 'invoice_date' => $data['invoice_date'],
                 'total_amount' => $totalAmount,
@@ -81,14 +86,23 @@ class InvoiceCreationService
                 'notes' => $data['notes'] ?? null,
             ]);
 
+            $this->storeCostSnapshots($invoice, $items, $lockedProducts);
+
             foreach ($quantitiesByProduct as $productId => $quantity) {
                 $product = $lockedProducts->get($productId);
-                $product->stock -= $quantity;
+                app(StockService::class)->decrease(
+                    (int) $productId,
+                    $quantity,
+                    'sale',
+                    User::query()->find($userId),
+                    'بيع ضمن الفاتورة '.$invoice->invoice_number,
+                    $invoice,
+                );
                 $product->total_sold += $quantity;
                 $product->save();
             }
 
-            $syncInstallment($invoice, $items, $totalCents / 100, $paidCents / 100);
+            $syncInstallment($invoice, $items, Money::decimal($totalCents), Money::decimal($paidCents));
 
             AppNotification::create([
                 'title' => 'تم إنشاء فاتورة',
@@ -129,42 +143,52 @@ class InvoiceCreationService
             foreach ($data['product_ids'] as $index => $productId) {
                 $quantity = (int) $data['quantities'][$index];
                 $product = $lockedProducts->get($productId);
-                $priceCents = (int) round((float) $product->price * 100);
+                $priceCents = Money::cents($product->price);
                 $lineTotalCents = $priceCents * $quantity;
 
                 $items[] = [
                     'product_id' => $product->id,
                     'name' => $product->name,
-                    'price' => number_format($priceCents / 100, 2, '.', ''),
+                    'price' => Money::decimal($priceCents),
                     'quantity' => $quantity,
-                    'line_total' => number_format($lineTotalCents / 100, 2, '.', ''),
+                    'line_total' => Money::decimal($lineTotalCents),
                 ];
                 $newQuantities[$product->id] = ($newQuantities[$product->id] ?? 0) + $quantity;
                 $totalCents += $lineTotalCents;
                 $totalQuantity += $quantity;
             }
 
-            $paidCents = (int) round((float) $data['paid_amount'] * 100);
+            $paidCents = Money::cents($data['paid_amount']);
             if ($paidCents > $totalCents) {
                 throw ValidationException::withMessages(['paid_amount' => 'لا يمكن أن يتجاوز المبلغ المدفوع إجمالي الفاتورة.']);
             }
 
             foreach ($productIds as $productId) {
                 $product = $lockedProducts->get($productId);
-                $stock = $product->stock + ($oldQuantities[$productId] ?? 0) - ($newQuantities[$productId] ?? 0);
+                $stockDelta = ($oldQuantities[$productId] ?? 0) - ($newQuantities[$productId] ?? 0);
+                $stock = $product->stock + $stockDelta;
                 if ($stock < 0) {
                     throw ValidationException::withMessages([
                         'product_ids' => 'المخزون غير كافٍ للمنتج '.$product->name.'.',
                     ]);
                 }
-                $product->stock = $stock;
+                if ($stockDelta !== 0) {
+                    app(StockService::class)->change(
+                        (int) $productId,
+                        $stockDelta,
+                        'sale_edit',
+                        User::query()->find($userId),
+                        'تعديل أصناف الفاتورة '.$lockedInvoice->invoice_number,
+                        $lockedInvoice,
+                    );
+                }
                 $product->total_sold = max(0, $product->total_sold - ($oldQuantities[$productId] ?? 0) + ($newQuantities[$productId] ?? 0));
                 $product->save();
             }
 
             $firstProduct = $lockedProducts->get($data['product_ids'][0]);
-            $total = number_format($totalCents / 100, 2, '.', '');
-            $paid = number_format($paidCents / 100, 2, '.', '');
+            $total = Money::decimal($totalCents);
+            $paid = Money::decimal($paidCents);
             $lockedInvoice->update([
                 'customer' => $data['customer'],
                 'product_id' => $firstProduct->id,
@@ -178,7 +202,9 @@ class InvoiceCreationService
                 'notes' => $data['notes'] ?? $lockedInvoice->notes,
             ]);
 
-            $syncInstallment($lockedInvoice, $items, $totalCents / 100, $paidCents / 100);
+            $this->storeCostSnapshots($lockedInvoice, $items, $lockedProducts);
+
+            $syncInstallment($lockedInvoice, $items, Money::decimal($totalCents), Money::decimal($paidCents));
             AppNotification::create([
                 'title' => 'تم تحديث فاتورة',
                 'message' => 'تم تحديث الفاتورة #'.$lockedInvoice->invoice_number,
@@ -188,6 +214,24 @@ class InvoiceCreationService
 
             return $lockedInvoice->refresh();
         }, 3);
+    }
+
+    private function storeCostSnapshots(invoice $invoice, array $items, $products): void
+    {
+        $invoice->lines()->delete();
+        foreach ($items as $item) {
+            $product = $products->get((int) $item['product_id']);
+            $cost = $product?->cost_price;
+            $invoice->lines()->create([
+                'product_id' => $product?->id,
+                'product_name' => $item['name'],
+                'quantity' => (int) $item['quantity'],
+                'unit_price' => $item['price'],
+                'unit_cost' => $cost,
+                'cost_estimated' => false,
+                'line_total' => $item['line_total'],
+            ]);
+        }
     }
 
     /** @return array<int, int> */
@@ -210,14 +254,21 @@ class InvoiceCreationService
             foreach ($quantities as $productId => $quantity) {
                 $product = $products->get($productId);
                 if ($product) {
-                    $product->stock += $quantity;
+                    app(StockService::class)->increase(
+                        (int) $productId,
+                        $quantity,
+                        'refund',
+                        User::query()->find($userId),
+                        'استرداد الفاتورة '.$locked->invoice_number,
+                        $locked,
+                    );
                     $product->total_sold = max(0, $product->total_sold - $quantity);
                     $product->save();
                 }
             }
 
             $locked->update(['status' => 'refunded']);
-            \App\Models\installments::query()->where('invoice_id', $locked->id)->update([
+            installments::query()->where('invoice_id', $locked->id)->update([
                 'remaining' => 0,
                 'status' => 'مسترد',
                 'next_payment_date' => null,

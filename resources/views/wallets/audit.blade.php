@@ -19,6 +19,7 @@
             <div class="col-md-3">
                 <label for="action" class="form-label small mb-1">تصفية حسب نوع السجل</label>
                 <select id="action" name="action" class="form-select">
+                    <option value="transaction." @selected(($filters['action'] ?? '') === 'transaction.')>معاملات المحافظ</option>
                     <option value="">كل الأحداث</option>
                     @foreach ($actions as $code => $label)
                         <option value="{{ $code }}" @selected(($filters['action'] ?? '') === $code)>{{ $label }}</option>

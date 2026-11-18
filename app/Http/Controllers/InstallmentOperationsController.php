@@ -9,8 +9,9 @@ use App\Models\PersonalDebt;
 use App\Models\products as Product;
 use App\Services\CustomerLedgerService;
 use App\Services\InstallmentWorkflowService;
-use Illuminate\Http\Request;
+use App\Support\Money;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -123,24 +124,24 @@ class InstallmentOperationsController extends Controller
             $lockedInstallment = Installment::query()->lockForUpdate()->findOrFail($installment->id);
             abort_if($lockedInstallment->invoice_id, 403);
             [$items, $totalQuantity, $totalCents, $products] = $workflow->buildItems($validated);
-            $paidCents = (int) round((float) $validated['paid_amount'] * 100);
+            $paidCents = Money::cents($validated['paid_amount']);
 
             if ($paidCents > $totalCents) {
                 throw ValidationException::withMessages(['paid_amount' => 'لا يمكن أن يتجاوز المبلغ المدفوع إجمالي القسط.']);
             }
 
-            $firstProduct = $products->get($validated['product_ids'][0]);
+            $firstProduct = $products->get($validated['product_ids'][0] ?? null);
             $complete = $paidCents === $totalCents;
             $lockedInstallment->update([
                 'customer' => $validated['customer'],
-                'product_id' => $firstProduct->id,
+                'product_id' => $firstProduct?->id,
                 'product_name' => collect($items)->pluck('name')->implode(', '),
-                'product_price' => number_format($totalCents / 100, 2, '.', ''),
+                'product_price' => Money::decimal($totalCents),
                 'quantity' => $totalQuantity,
                 'payment_date' => $validated['payment_date'] ?? null,
                 'next_payment_date' => $complete ? null : ($validated['next_payment_date'] ?? null),
-                'paid_amount' => number_format($paidCents / 100, 2, '.', ''),
-                'remaining' => number_format(($totalCents - $paidCents) / 100, 2, '.', ''),
+                'paid_amount' => Money::decimal($paidCents),
+                'remaining' => Money::decimal($totalCents - $paidCents),
                 'status' => $complete ? 'مكتمل' : 'غير مكتمل',
                 'items' => $items,
                 'notes' => $validated['notes'] ?? $lockedInstallment->notes,
@@ -200,12 +201,12 @@ class InstallmentOperationsController extends Controller
         $validated = $request->validate([
             'paid_amount' => ['required', 'numeric', 'decimal:0,2', 'min:0.01'],
         ]);
-        $paymentCents = (int) round((float) $validated['paid_amount'] * 100);
+        $paymentCents = Money::cents($validated['paid_amount']);
         $userId = $request->user()->id;
 
         DB::transaction(function () use ($installment, $paymentCents, $userId): void {
             $lockedInstallment = Installment::query()->lockForUpdate()->findOrFail($installment->id);
-            $remainingCents = (int) round((float) $lockedInstallment->remaining * 100);
+            $remainingCents = Money::cents($lockedInstallment->remaining);
 
             if ($lockedInstallment->status === 'مكتمل' || $remainingCents <= 0) {
                 throw ValidationException::withMessages(['paid_amount' => 'هذا القسط مكتمل ولا يحتاج إلى دفعة أخرى.']);
@@ -215,12 +216,12 @@ class InstallmentOperationsController extends Controller
                 throw ValidationException::withMessages(['paid_amount' => 'لا يمكن أن تتجاوز الدفعة الرصيد المتبقي.']);
             }
 
-            $paidCents = (int) round((float) $lockedInstallment->paid_amount * 100) + $paymentCents;
+            $paidCents = Money::cents($lockedInstallment->paid_amount) + $paymentCents;
             $remainingCents -= $paymentCents;
             $complete = $remainingCents === 0;
             $lockedInstallment->update([
-                'paid_amount' => number_format($paidCents / 100, 2, '.', ''),
-                'remaining' => number_format($remainingCents / 100, 2, '.', ''),
+                'paid_amount' => Money::decimal($paidCents),
+                'remaining' => Money::decimal($remainingCents),
                 'status' => $complete ? 'مكتمل' : 'غير مكتمل',
                 'payment_date' => now()->toDateString(),
                 'next_payment_date' => $complete ? null : now()->addMonth()->toDateString(),
@@ -228,21 +229,21 @@ class InstallmentOperationsController extends Controller
 
             if ($lockedInstallment->invoice_id) {
                 $invoice = Invoice::query()->lockForUpdate()->findOrFail($lockedInstallment->invoice_id);
-                $invoicePaidCents = (int) round((float) $invoice->paid_amount * 100);
-                $invoiceTotalCents = (int) round((float) $invoice->total_amount * 100);
+                $invoicePaidCents = Money::cents($invoice->paid_amount);
+                $invoiceTotalCents = Money::cents($invoice->total_amount);
 
                 if ($invoice->status === 'refunded' || $paymentCents > max(0, $invoiceTotalCents - $invoicePaidCents)) {
                     throw ValidationException::withMessages(['paid_amount' => 'لا يمكن تسجيل هذه الدفعة على الفاتورة.']);
                 }
 
-                $invoice->paid_amount = number_format(($invoicePaidCents + $paymentCents) / 100, 2, '.', '');
+                $invoice->paid_amount = Money::decimal($invoicePaidCents + $paymentCents);
                 $invoice->status = $invoicePaidCents + $paymentCents >= $invoiceTotalCents ? 'paid' : 'unpaid';
                 $invoice->save();
             }
 
             AppNotification::create([
                 'title' => 'تم استلام دفعة',
-                'message' => 'تم استلام دفعة بمبلغ '.number_format($paymentCents / 100, 2, '.', '').' على الدين #'.$lockedInstallment->id,
+                'message' => 'تم استلام دفعة بمبلغ '.Money::decimal($paymentCents).' على الدين #'.$lockedInstallment->id,
                 'is_active' => true,
                 'created_by' => $userId,
             ]);
@@ -269,7 +270,11 @@ class InstallmentOperationsController extends Controller
         return $request->validate([
             'customer' => ['required', 'string', 'max:255'],
             'product_ids' => ['required', 'array', 'min:1', 'max:100'],
-            'product_ids.*' => ['required', 'integer'],
+            'product_ids.*' => ['nullable', 'integer', 'exists:products,id'],
+            'product_names' => ['nullable', 'array', 'size:'.$count, 'max:100'],
+            'product_names.*' => ['nullable', 'string', 'max:255'],
+            'unit_prices' => ['nullable', 'array', 'size:'.$count, 'max:100'],
+            'unit_prices.*' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999'],
             'quantities' => ['required', 'array', 'size:'.$count, 'max:100'],
             'quantities.*' => ['required', 'integer', 'min:1', 'max:100000'],
             'payment_date' => ['nullable', 'date'],
@@ -278,5 +283,4 @@ class InstallmentOperationsController extends Controller
             'notes' => ['nullable', 'string', 'max:2000'],
         ], ['notes.max' => 'يجب ألا تتجاوز الملاحظات 2000 حرف.']);
     }
-
 }

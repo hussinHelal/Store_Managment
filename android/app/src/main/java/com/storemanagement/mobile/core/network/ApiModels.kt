@@ -121,6 +121,7 @@ data class ProductDto(
     val category: CategoryDto? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("cost_price") val costPrice: String? = null,
 )
 
 @Serializable
@@ -132,6 +133,7 @@ data class ProductInputDto(
     val barcode: String? = null,
     val stock: Int,
     @SerialName("category_id") val categoryId: Long? = null,
+    @SerialName("cost_price") val costPrice: String? = null,
 )
 
 @Serializable
@@ -139,6 +141,72 @@ data class SoldProductDto(
     val id: Long,
     val name: String,
     @SerialName("sold_quantity") val soldQuantity: Int,
+)
+
+@Serializable
+data class SalesReportSummaryDto(
+    @SerialName("gross_sales") val grossSales: String,
+    val discounts: String? = null,
+    val refunds: String,
+    @SerialName("net_sales") val netSales: String,
+    @SerialName("invoice_count") val invoiceCount: Int,
+    @SerialName("refund_count") val refundCount: Int,
+    @SerialName("average_ticket") val averageTicket: String,
+    @SerialName("cost_of_goods") val costOfGoods: String,
+    @SerialName("gross_profit") val grossProfit: String,
+    @SerialName("missing_cost_quantity") val missingCostQuantity: Int,
+    @SerialName("estimated_cost_quantity") val estimatedCostQuantity: Int = 0,
+)
+
+@Serializable
+data class SalesReportPeriodDto(
+    val period: String,
+    @SerialName("net_sales") val netSales: String,
+    @SerialName("invoice_count") val invoiceCount: Int,
+)
+
+@Serializable
+data class SalesReportProductDto(
+    @SerialName("product_id") val productId: Long? = null,
+    val name: String,
+    val quantity: Int,
+    @SerialName("net_sales") val netSales: String,
+)
+
+@Serializable
+data class SalesReportProductsDto(
+    val top: List<SalesReportProductDto> = emptyList(),
+    val bottom: List<SalesReportProductDto> = emptyList(),
+)
+
+@Serializable
+data class SalesReportCategoryDto(
+    val name: String,
+    val quantity: Int,
+    @SerialName("net_sales") val netSales: String,
+)
+
+@Serializable
+data class SalesReportCashierDto(
+    val name: String,
+    @SerialName("invoice_count") val invoiceCount: Int,
+    @SerialName("net_sales") val netSales: String,
+)
+
+@Serializable
+data class SalesReportPaymentStatusDto(
+    val status: String,
+    @SerialName("invoice_count") val invoiceCount: Int,
+)
+
+@Serializable
+data class SalesReportDto(
+    val summary: SalesReportSummaryDto,
+    val trend: List<SalesReportPeriodDto> = emptyList(),
+    val products: SalesReportProductsDto = SalesReportProductsDto(),
+    val categories: List<SalesReportCategoryDto> = emptyList(),
+    val cashiers: List<SalesReportCashierDto> = emptyList(),
+    @SerialName("payment_statuses") val paymentStatuses: List<SalesReportPaymentStatusDto> = emptyList(),
 )
 
 @Serializable
@@ -177,6 +245,86 @@ data class SupplierInputDto(
     val address: String? = null,
     val notes: String? = null,
     @SerialName("opening_balance") val openingBalance: String? = null,
+)
+
+@Serializable
+data class SupplierStatementDto(
+    val supplier: SupplierDto,
+    val summary: SupplierStatementSummaryDto,
+    val purchases: SupplierStatementPageDto<SupplierPurchaseStatementDto>,
+    val payments: SupplierStatementPageDto<SupplierPaymentStatementDto>,
+)
+
+@Serializable
+data class SupplierStatementSummaryDto(
+    @SerialName("opening_balance") val openingBalance: String,
+    @SerialName("recorded_balance") val recordedBalance: String,
+    @SerialName("unallocated_difference") val unallocatedDifference: String,
+    val aging: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+data class SupplierStatementPageDto<T>(
+    val data: List<T> = emptyList(),
+    @SerialName("current_page") val currentPage: Int = 1,
+    @SerialName("last_page") val lastPage: Int = 1,
+    val total: Int = 0,
+)
+
+@Serializable
+data class SupplierPurchaseStatementDto(
+    val id: Long,
+    @SerialName("invoice_number") val invoiceNumber: String,
+    @SerialName("purchase_date") val purchaseDate: String? = null,
+    @SerialName("total_amount") val totalAmount: String,
+    @SerialName("paid_amount") val paidAmount: String,
+    val remaining: String,
+    val status: String,
+)
+
+@Serializable
+data class SupplierPaymentStatementDto(
+    val id: Long,
+    @SerialName("receipt_number") val receiptNumber: String,
+    @SerialName("payment_date") val paymentDate: String? = null,
+    @SerialName("purchase_number") val purchaseNumber: String? = null,
+    val amount: String,
+    val notes: String? = null,
+)
+
+@Serializable
+data class SupplierReceiptProductDto(
+    val id: Long,
+    val name: String,
+    val barcode: String? = null,
+    val stock: Int,
+    @SerialName("cost_price") val costPrice: String? = null,
+)
+
+@Serializable
+data class PurchaseReceiptLineInputDto(
+    @SerialName("product_id") val productId: Long,
+    val quantity: Int,
+    @SerialName("unit_cost") val unitCost: String,
+)
+
+@Serializable
+data class PurchaseReceiptInputDto(
+    @SerialName("purchase_date") val purchaseDate: String,
+    @SerialName("payment_type") val paymentType: String,
+    @SerialName("paid_amount") val paidAmount: String,
+    val items: List<PurchaseReceiptLineInputDto>,
+    @SerialName("branch_id") val branchId: Long? = null,
+    val notes: String? = null,
+)
+
+@Serializable
+data class PurchaseReceiptDto(
+    val id: Long,
+    @SerialName("invoice_number") val invoiceNumber: String,
+    @SerialName("total_amount") val totalAmount: String,
+    @SerialName("paid_amount") val paidAmount: String,
+    val remaining: String,
 )
 
 @Serializable
@@ -300,6 +448,73 @@ data class CashierProductDto(
     val stock: Int,
     @SerialName("image_url") val imageUrl: String? = null,
 )
+
+@Serializable
+data class TrackedDeviceDto(
+    val id: Long,
+    @SerialName("product_id") val productId: Long,
+    @SerialName("product_name") val productName: String? = null,
+    val imei: String? = null,
+    @SerialName("serial_number") val serialNumber: String? = null,
+    val status: String,
+    @SerialName("customer_name") val customerName: String? = null,
+    @SerialName("invoice_id") val invoiceId: Long? = null,
+    val notes: String? = null,
+)
+
+@Serializable
+data class TrackedDeviceInputDto(
+    @SerialName("product_id") val productId: Long,
+    val imei: String? = null,
+    @SerialName("serial_number") val serialNumber: String? = null,
+    val status: String,
+    @SerialName("customer_name") val customerName: String? = null,
+    @SerialName("invoice_id") val invoiceId: Long? = null,
+    val notes: String? = null,
+)
+
+@Serializable
+data class BranchStockDto(
+    val id: Long,
+    @SerialName("branch_id") val branchId: Long,
+    val branch: BranchSummaryDto? = null,
+    @SerialName("product_id") val productId: Long,
+    val product: BranchProductSummaryDto? = null,
+    val quantity: Int,
+    @SerialName("reorder_level") val reorderLevel: Int,
+    @SerialName("is_low") val isLow: Boolean = false,
+)
+
+@Serializable
+data class BranchSummaryDto(val id: Long, val name: String)
+
+@Serializable
+data class BranchProductSummaryDto(val id: Long, val name: String, val barcode: String? = null)
+
+@Serializable
+data class StockAdjustmentInputDto(
+    @SerialName("branch_id") val branchId: Long,
+    @SerialName("product_id") val productId: Long,
+    @SerialName("quantity_delta") val quantityDelta: Int,
+    val reason: String,
+)
+
+@Serializable
+data class StockMovementDto(
+    val id: Long,
+    @SerialName("branch_id") val branchId: Long,
+    @SerialName("branch_name") val branchName: String? = null,
+    @SerialName("product_id") val productId: Long,
+    @SerialName("product_name") val productName: String? = null,
+    val type: String,
+    @SerialName("quantity_delta") val quantityDelta: Int,
+    @SerialName("balance_after") val balanceAfter: Int,
+    val note: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+)
+
+@Serializable
+data class StockAdjustmentResponseDto(val data: StockMovementDto, @SerialName("product_stock") val productStock: Int)
 
 @Serializable
 data class CashierCheckoutItemDto(

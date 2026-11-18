@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
  * Anyone who may create invoices (the existing create-invoice gate) can use it.
  * EnsureUserIsActive signs out and blocks a deactivated account.
  */
-Route::middleware(['auth:sanctum', EnsureUserIsActive::class, 'can:create-invoice'])
+Route::middleware(['auth:sanctum', EnsureUserIsActive::class, 'can:page.invoices.manage', 'can:create-invoice'])
     ->prefix('cashier')->name('cashier.')->group(function (): void {
         Route::get('/', [CashierController::class, 'index'])->name('index');
         Route::get('/products/search', [CashierController::class, 'search'])->name('products.search');

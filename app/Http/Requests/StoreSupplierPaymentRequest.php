@@ -15,6 +15,7 @@ class StoreSupplierPaymentRequest extends FormRequest
     {
         return [
             'amount' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:99999999'],
+            'purchase_id' => ['nullable', 'integer', 'exists:purchases,id'],
             'payment_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];

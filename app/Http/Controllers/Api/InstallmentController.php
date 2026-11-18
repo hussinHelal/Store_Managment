@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\InstallmentIndexRequest;
 use App\Http\Requests\Api\CreateInstallmentRequest;
-use App\Http\Requests\Api\UpdateInstallmentRequest;
 use App\Http\Requests\Api\DeleteInstallmentRequest;
+use App\Http\Requests\Api\InstallmentIndexRequest;
 use App\Http\Requests\Api\PayInstallmentRequest;
+use App\Http\Requests\Api\UpdateInstallmentRequest;
 use App\Http\Requests\Api\UpdateInstallmentStatusRequest;
 use App\Http\Resources\Api\InstallmentResource;
 use App\Models\AppNotification;
@@ -14,12 +14,13 @@ use App\Models\installments as Installment;
 use App\Models\invoice as Invoice;
 use App\Services\ApiIdempotencyService;
 use App\Services\CustomerLedgerService;
-use App\Services\InvoiceInstallmentSync;
 use App\Services\InstallmentWorkflowService;
+use App\Services\InvoiceInstallmentSync;
+use App\Support\Money;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class InstallmentController
 {
@@ -173,24 +174,24 @@ class InstallmentController
             function () use ($request, $installment, $data, $invoiceInstallments): array {
                 $updated = DB::transaction(function () use ($request, $installment, $data, $invoiceInstallments): Installment {
                     $locked = Installment::query()->lockForUpdate()->findOrFail($installment->id);
-                    $remainingCents = (int) round((float) $locked->remaining * 100);
+                    $remainingCents = Money::cents($locked->remaining);
                     if ($locked->status === 'مكتمل' || $remainingCents <= 0) {
                         throw ValidationException::withMessages(['amount' => 'هذا القسط مكتمل بالفعل.']);
                     }
 
                     $paymentCents = isset($data['amount']) && $data['amount'] !== ''
-                        ? (int) round((float) $data['amount'] * 100)
+                        ? Money::cents($data['amount'])
                         : $remainingCents;
                     if ($paymentCents <= 0 || $paymentCents > $remainingCents) {
                         throw ValidationException::withMessages(['amount' => 'لا يمكن أن تتجاوز الدفعة الرصيد المتبقي.']);
                     }
 
-                    $paidCents = (int) round((float) $locked->paid_amount * 100) + $paymentCents;
+                    $paidCents = Money::cents($locked->paid_amount) + $paymentCents;
                     $remainingCents -= $paymentCents;
                     $complete = $remainingCents === 0;
                     $locked->update([
-                        'paid_amount' => number_format($paidCents / 100, 2, '.', ''),
-                        'remaining' => number_format($remainingCents / 100, 2, '.', ''),
+                        'paid_amount' => Money::decimal($paidCents),
+                        'remaining' => Money::decimal($remainingCents),
                         'status' => $complete ? 'مكتمل' : 'غير مكتمل',
                         'payment_date' => now()->toDateString(),
                         'next_payment_date' => $complete ? null : now()->addMonth()->toDateString(),
@@ -198,25 +199,25 @@ class InstallmentController
 
                     if ($locked->invoice_id) {
                         $invoice = Invoice::query()->lockForUpdate()->findOrFail($locked->invoice_id);
-                        $invoiceTotalCents = (int) round((float) $invoice->total_amount * 100);
-                        $invoicePaidCents = (int) round((float) $invoice->paid_amount * 100);
+                        $invoiceTotalCents = Money::cents($invoice->total_amount);
+                        $invoicePaidCents = Money::cents($invoice->paid_amount);
                         if ($invoice->status === 'refunded' || $paymentCents > $invoiceTotalCents - $invoicePaidCents) {
                             throw ValidationException::withMessages(['amount' => 'لا يمكن تسجيل هذه الدفعة على الفاتورة.']);
                         }
                         $invoicePaidCents += $paymentCents;
                         $invoice->update([
-                            'paid_amount' => number_format($invoicePaidCents / 100, 2, '.', ''),
+                            'paid_amount' => Money::decimal($invoicePaidCents),
                             'status' => $invoicePaidCents >= $invoiceTotalCents ? 'paid' : 'unpaid',
                         ]);
                         $items = is_array($invoice->items) ? $invoice->items : [];
-                        $invoiceInstallments->sync($invoice, $items, $invoiceTotalCents / 100, $invoicePaidCents / 100);
+                        $invoiceInstallments->sync($invoice, $items, Money::decimal($invoiceTotalCents), Money::decimal($invoicePaidCents));
                     } else {
                         app(CustomerLedgerService::class)->syncNamedCustomer($locked->customer, $locked);
                     }
 
                     AppNotification::query()->create([
                         'title' => 'تم استلام دفعة',
-                        'message' => 'تم استلام دفعة بمبلغ '.number_format($paymentCents / 100, 2, '.', '').' على الدين #'.$locked->id,
+                        'message' => 'تم استلام دفعة بمبلغ '.Money::decimal($paymentCents).' على الدين #'.$locked->id,
                         'is_active' => true,
                         'created_by' => $request->user()->id,
                     ]);

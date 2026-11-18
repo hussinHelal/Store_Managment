@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Branch;
+use App\Models\products;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Services\StockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -48,6 +51,43 @@ class ApiV1SupplierWriteTest extends TestCase
             ->assertJsonPath('data.id', $supplierId);
 
         $this->assertSame(1, Supplier::query()->count());
+    }
+
+    public function test_supplier_receipt_records_line_cost_and_increases_only_selected_branch_stock(): void
+    {
+        $token = $this->tokenWithSupplierManagePermission();
+        $supplier = Supplier::query()->create(['name' => 'Receipt supplier', 'opening_balance' => '0.00', 'balance' => '0.00']);
+        $product = products::query()->create([
+            'name' => 'Receipt phone', 'price' => '100.00', 'cost_price' => '80.00', 'description' => 'Phone', 'stock' => 0,
+        ]);
+        $branch = Branch::query()->where('is_main', true)->firstOrFail();
+        $key = (string) Str::uuid();
+        $payload = [
+            'branch_id' => $branch->id,
+            'purchase_date' => now()->toDateString(),
+            'payment_type' => 'credit',
+            'paid_amount' => '5.00',
+            'items' => [['product_id' => $product->id, 'quantity' => 2, 'unit_cost' => '12.50']],
+        ];
+
+        $created = $this->withToken($token)->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/suppliers/'.$supplier->id.'/receipts', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.total_amount', '25.00')
+            ->assertJsonPath('data.items.0.unit_cost', '12.50')
+            ->assertJsonPath('data.items.0.cost_warning', true);
+
+        $this->withToken($token)->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/suppliers/'.$supplier->id.'/receipts', $payload)
+            ->assertCreated()->assertJsonPath('data.id', $created->json('data.id'));
+
+        $this->assertSame('80.00', $product->fresh()->cost_price);
+        $this->assertSame(2, (int) $product->fresh()->stock);
+        $this->assertSame('20.00', $supplier->fresh()->balance);
+        $this->assertDatabaseCount('purchases', 1);
+        $this->assertDatabaseCount('purchase_items', 1);
+        $this->assertDatabaseCount('supplier_payments', 1);
+        $this->assertSame(0, app(StockService::class)->verify()['branch_stock_mismatches']);
     }
 
     public function test_supplier_create_requires_manage_permission_and_idempotency_key(): void

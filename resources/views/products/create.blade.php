@@ -17,6 +17,14 @@
       </div>
 
       <div class="mb-3">
+        <label for="cost_price" class="form-label">تكلفة الوحدة (اختيارية)</label>
+        @unless($supportsCostPrice)<div class="form-text text-warning">تتطلب هذه الميزة تحديث قاعدة البيانات قبل الاستخدام.</div>@endunless
+        <input type="number" step="0.01" min="0" class="form-control @error('cost_price') is-invalid @enderror" id="cost_price" name="cost_price" value="{{ old('cost_price') }}" @disabled(!$supportsCostPrice)>
+        @error('cost_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <div class="form-text">تبقى تكلفة المنتج مستقلة عن تكلفة كل فاتورة شراء.</div>
+      </div>
+
+      <div class="mb-3">
         <label for="description" class="form-label">الوصف</label>
         <input type="text" class="form-control" id="description" name="description" value="{{ old('description') }}">
       </div>
@@ -88,7 +96,8 @@
           stopScanner();
         }, (error) => {
           stopScanner();
-          window.showBootstrapAlert('تعذر الوصول إلى الكاميرا: ' + error.message, 'danger');
+          barcodeInput.focus();
+          window.showBootstrapAlert('لم تتوفر الكاميرا. اكتب الباركود هنا أو استخدم ماسحاً متصلاً بالجهاز.', 'warning');
         });
         }
 

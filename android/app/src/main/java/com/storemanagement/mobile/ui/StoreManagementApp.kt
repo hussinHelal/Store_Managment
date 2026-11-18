@@ -152,6 +152,12 @@ import com.storemanagement.mobile.core.network.CashierCheckoutInputDto
 import com.storemanagement.mobile.core.network.CashierCheckoutItemDto
 import com.storemanagement.mobile.core.network.CashierCheckoutResponseDto
 import com.storemanagement.mobile.core.network.CashierProductDto
+import com.storemanagement.mobile.core.network.BranchStockDto
+import com.storemanagement.mobile.core.network.TrackedDeviceDto
+import com.storemanagement.mobile.core.network.TrackedDeviceInputDto
+import com.storemanagement.mobile.core.network.SupplierReceiptProductDto
+import com.storemanagement.mobile.core.network.PurchaseReceiptInputDto
+import com.storemanagement.mobile.core.network.PurchaseReceiptLineInputDto
 import com.storemanagement.mobile.ui.theme.StoreTheme
 import coil3.compose.AsyncImage
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -321,7 +327,7 @@ private enum class StoreTab(val label: String, val permission: String?, val icon
     More("المزيد", null, Icons.Filled.MoreHoriz),
 }
 
-private enum class MoreSection { Home, Categories, Customers, Sales, Suppliers, Installments, Wallets, WalletCashier, ProductCashier, Damaged, Notifications, Maintenance, Profile, Backup }
+private enum class MoreSection { Home, Categories, Customers, Sales, SalesReports, Suppliers, Installments, Wallets, WalletCashier, ProductCashier, Damaged, Notifications, Maintenance, BranchStock, Devices, Profile, Backup }
 internal enum class CashierAction { Settle, Reverse }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -340,6 +346,7 @@ private fun StoreHomeScreen(
     val categories by storeViewModel.categories.collectAsStateWithLifecycle()
     val customers by storeViewModel.customers.collectAsStateWithLifecycle()
     val sales by storeViewModel.sales.collectAsStateWithLifecycle()
+    val salesReportState by storeViewModel.salesReport.collectAsStateWithLifecycle()
     val notifications by storeViewModel.notifications.collectAsStateWithLifecycle()
     val maintenances by storeViewModel.maintenances.collectAsStateWithLifecycle()
     val invoices by storeViewModel.invoices.collectAsStateWithLifecycle()
@@ -352,11 +359,15 @@ private fun StoreHomeScreen(
     val profileState by storeViewModel.profile.collectAsStateWithLifecycle()
     val damagedItems by storeViewModel.damagedItems.collectAsStateWithLifecycle()
     val damagedProductsState by storeViewModel.damagedProducts.collectAsStateWithLifecycle()
+    val trackedDevicesState by storeViewModel.trackedDevices.collectAsStateWithLifecycle()
+    val branchStockState by storeViewModel.branchStock.collectAsStateWithLifecycle()
+    val stockMovementsState by storeViewModel.stockMovements.collectAsStateWithLifecycle()
     val productPage by storeViewModel.productPage.collectAsStateWithLifecycle()
     val productDetails by storeViewModel.productDetails.collectAsStateWithLifecycle()
     val invoiceDetails by storeViewModel.invoiceDetails.collectAsStateWithLifecycle()
     val invoicePdfState by storeViewModel.invoicePdfState.collectAsStateWithLifecycle()
     val supplierDetails by storeViewModel.supplierDetails.collectAsStateWithLifecycle()
+    val supplierReceiptProducts by storeViewModel.supplierReceiptProducts.collectAsStateWithLifecycle()
     val installmentDetails by storeViewModel.installmentDetails.collectAsStateWithLifecycle()
     val categoryPage by storeViewModel.categoryPage.collectAsStateWithLifecycle()
     val categoryDetails by storeViewModel.categoryDetails.collectAsStateWithLifecycle()
@@ -440,6 +451,7 @@ private fun StoreHomeScreen(
             MoreSection.Categories -> "التصنيفات"
             MoreSection.Customers -> "العملاء"
             MoreSection.Sales -> "المبيعات"
+            MoreSection.SalesReports -> "تقارير المبيعات"
             MoreSection.Suppliers -> "الموردون"
             MoreSection.Installments -> "الأقساط والديون"
             MoreSection.Wallets -> "المحافظ"
@@ -448,6 +460,8 @@ private fun StoreHomeScreen(
             MoreSection.Damaged -> "الهالك"
             MoreSection.Notifications -> "الإشعارات"
             MoreSection.Maintenance -> "الصيانة"
+            MoreSection.BranchStock -> "مخزون الفروع"
+            MoreSection.Devices -> "\u0627\u0644\u0623\u062c\u0647\u0632\u0629 \u0627\u0644\u0645\u062a\u062a\u0628\u0639\u0629"
             MoreSection.Profile -> "حسابي"
             MoreSection.Backup -> "النسخ الاحتياطي"
             MoreSection.Home -> "المزيد"
@@ -613,11 +627,18 @@ private fun StoreHomeScreen(
                     storeViewModel.refreshPersonalDebts(query)
                 }
                 MoreSection.Sales -> storeViewModel.refreshSales(query)
+                MoreSection.SalesReports -> storeViewModel.refreshSalesReport(
+                    SimpleDateFormat("yyyy-MM-01", Locale.US).format(Date()),
+                    SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()),
+                    "day",
+                )
                 MoreSection.Notifications -> storeViewModel.refreshNotifications()
                 MoreSection.Maintenance -> storeViewModel.refreshMaintenances(query)
                 MoreSection.WalletCashier -> storeViewModel.refreshWalletCashier()
                 MoreSection.ProductCashier -> storeViewModel.searchCashierProducts("")
                 MoreSection.Damaged -> storeViewModel.refreshDamagedItems(query, damagedStatusFilter)
+                MoreSection.BranchStock -> storeViewModel.refreshBranchStock(query, "page.stock_movements.view" in user.permissions)
+                MoreSection.Devices -> { storeViewModel.refreshTrackedDevices(query); storeViewModel.refreshProducts(null) }
                 else -> Unit
             }
         }
@@ -962,9 +983,12 @@ private fun StoreHomeScreen(
                     canViewWalletCashier = "page.wallet_cashier.view" in user.permissions,
                     canViewProductCashier = "page.invoices.manage" in user.permissions,
                     canViewSales = "page.sales.view" in user.permissions,
+                    canViewSalesReports = "page.sales_reports.view" in user.permissions,
                     canViewNotifications = "page.notifications.view" in user.permissions,
                     canViewMaintenance = "page.maintenance.view" in user.permissions,
                     canViewDamaged = "page.damaged.view" in user.permissions,
+                    canViewBranchStock = "page.branch_stock.view" in user.permissions,
+                    canViewDevices = "page.devices.view" in user.permissions,
                     canViewBackup = "page.backup.manage" in user.permissions,
                     onOpenProfile = {
                         moreSectionName = MoreSection.Profile.name
@@ -1006,6 +1030,15 @@ private fun StoreHomeScreen(
                         moreSectionName = MoreSection.Sales.name
                         searchQuery = ""
                     },
+                    onOpenSalesReports = {
+                        moreSectionName = MoreSection.SalesReports.name
+                        searchQuery = ""
+                        storeViewModel.refreshSalesReport(
+                            SimpleDateFormat("yyyy-MM-01", Locale.US).format(Date()),
+                            SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()),
+                            "day",
+                        )
+                    },
                     onOpenNotifications = {
                         moreSectionName = MoreSection.Notifications.name
                         searchQuery = ""
@@ -1019,6 +1052,12 @@ private fun StoreHomeScreen(
                         moreSectionName = MoreSection.Damaged.name
                         searchQuery = ""
                         storeViewModel.refreshDamagedItems(null)
+                    },
+                    onOpenDevices = { moreSectionName = MoreSection.Devices.name; searchQuery = ""; storeViewModel.refreshTrackedDevices(); storeViewModel.refreshProducts(null) },
+                    onOpenBranchStock = {
+                        moreSectionName = MoreSection.BranchStock.name
+                        searchQuery = ""
+                        storeViewModel.refreshBranchStock(includeMovements = "page.stock_movements.view" in user.permissions)
                     },
                     onOpenBackup = { moreSectionName = MoreSection.Backup.name; searchQuery = "" },
                     modifier = Modifier.padding(padding),
@@ -1065,6 +1104,7 @@ private fun StoreHomeScreen(
                     onSupplierClick = {
                         selectedSupplier = it
                         storeViewModel.loadSupplierDetails(it.id)
+                        if ("page.suppliers.manage" in user.permissions) storeViewModel.refreshSupplierReceiptProducts()
                     },
                     onEdit = { supplierEditTarget = it },
                     onDelete = { supplierDeleteTarget = it },
@@ -1174,6 +1214,11 @@ private fun StoreHomeScreen(
                     onLoadMore = storeViewModel::loadMoreSales,
                     modifier = Modifier.padding(padding),
                 )
+                MoreSection.SalesReports -> SalesReportScreen(
+                    state = salesReportState,
+                    onRun = storeViewModel::refreshSalesReport,
+                    modifier = Modifier.padding(padding),
+                )
                 MoreSection.Notifications -> NotificationListScreen(
                     state = notifications,
                     onRefresh = { storeViewModel.refreshNotifications() },
@@ -1192,6 +1237,29 @@ private fun StoreHomeScreen(
                     onChangeStatus = { maintenanceStatusTarget = it },
                     onEdit = { maintenanceEditTarget = it; maintenanceDialogOpen = true },
                     onDelete = { maintenanceDeleteTarget = it },
+                    modifier = Modifier.padding(padding),
+                )
+                MoreSection.BranchStock -> BranchStockScreen(
+                    stock = branchStockState,
+                    movements = stockMovementsState,
+                    query = searchQuery,
+                    canManage = "page.stock_movements.manage" in user.permissions,
+                    canViewMovements = "page.stock_movements.view" in user.permissions,
+                    onQueryChange = { searchQuery = it },
+                    onRefresh = { storeViewModel.refreshBranchStock(searchQuery.ifBlank { null }, "page.stock_movements.view" in user.permissions) },
+                    onAdjust = storeViewModel::adjustBranchStock,
+                    modifier = Modifier.padding(padding),
+                )
+                MoreSection.Devices -> TrackedDevicesScreen(
+                    page = trackedDevicesState,
+                    products = productPage.items,
+                    query = searchQuery,
+                    canManage = "page.devices.manage" in user.permissions,
+                    onQueryChange = { searchQuery = it },
+                    onRefresh = { status -> storeViewModel.refreshTrackedDevices(searchQuery.ifBlank { null }, status) },
+                    onSave = storeViewModel::saveTrackedDevice,
+                    onDelete = storeViewModel::deleteTrackedDevice,
+                    onLoadMore = { status -> storeViewModel.loadMoreTrackedDevices(searchQuery.ifBlank { null }, status) },
                     modifier = Modifier.padding(padding),
                 )
             }
@@ -1584,7 +1652,14 @@ private fun StoreHomeScreen(
                 storeViewModel.clearSupplierDetails()
             },
         ) {
-            SupplierDetailsSheet(cached, supplierDetails)
+            SupplierDetailsSheet(
+                cached = cached,
+                state = supplierDetails,
+                canManage = "page.suppliers.manage" in user.permissions,
+                receiptProducts = supplierReceiptProducts,
+                onSearchReceiptProducts = storeViewModel::refreshSupplierReceiptProducts,
+                onCreateReceipt = storeViewModel::createSupplierReceipt,
+            )
         }
     }
 
@@ -1633,6 +1708,7 @@ private fun ProductListScreen(
     selectedCategoryId: Long?,
     inStockFilter: Boolean?,
     canManage: Boolean,
+    canViewMovements: Boolean,
     onQueryChange: (String) -> Unit,
     onCategoryChange: (Long?) -> Unit,
     onStockFilterChange: (Boolean?) -> Unit,
@@ -1881,13 +1957,37 @@ private fun InvoiceDetailsSheet(cached: InvoiceDto, state: InvoiceDetailUiState,
 }
 
 @Composable
-private fun SupplierDetailsSheet(cached: SupplierDto, state: SupplierDetailUiState) {
+private fun SupplierDetailsSheet(
+    cached: SupplierDto,
+    state: SupplierDetailUiState,
+    canManage: Boolean,
+    receiptProducts: RemotePage<SupplierReceiptProductDto>,
+    onSearchReceiptProducts: (String?) -> Unit,
+    onCreateReceipt: (Long, PurchaseReceiptInputDto, String) -> Unit,
+) {
+    var receiptOpen by rememberSaveable(cached.id) { mutableStateOf(false) }
+    var search by rememberSaveable(cached.id) { mutableStateOf("") }
+    var selectedProductId by rememberSaveable(cached.id) { mutableStateOf<Long?>(null) }
+    var quantity by rememberSaveable(cached.id) { mutableStateOf("1") }
+    var unitCost by rememberSaveable(cached.id) { mutableStateOf("") }
+    var purchaseDate by rememberSaveable(cached.id) { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())) }
+    var paymentType by rememberSaveable(cached.id) { mutableStateOf("credit") }
+    var paidAmount by rememberSaveable(cached.id) { mutableStateOf("0.00") }
+    var notes by rememberSaveable(cached.id) { mutableStateOf("") }
+    var productMenuOpen by remember { mutableStateOf(false) }
+    val selectedProduct = receiptProducts.items.firstOrNull { it.id == selectedProductId }
     val supplier = state.supplier ?: cached
     Column(
-        Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(supplier.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        if (canManage) {
+            Button(onClick = { receiptOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Text("استلام بضاعة من المورد", modifier = Modifier.padding(start = 8.dp))
+            }
+        }
         when {
             state.isLoading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -1902,10 +2002,87 @@ private fun SupplierDetailsSheet(cached: SupplierDto, state: SupplierDetailUiSta
         DetailLine("الرصيد الافتتاحي", supplier.openingBalance)
         DetailLine("الرصيد المستحق", supplier.balance)
         DetailLine("فواتير الشراء", (supplier.purchasesCount ?: 0).toString())
-        Text(
-            "عرض فقط. تسجيل المشتريات والمدفوعات غير متاح عبر واجهة الهاتف الحالية.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        state.statement?.let { statement ->
+            Text("أعمار المديونية", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            mapOf("current" to "غير مستحق بعد", "days_1_30" to "حتى 30 يوماً", "days_31_60" to "31 إلى 60 يوماً", "days_61_90" to "61 إلى 90 يوماً", "over_90_days" to "أكثر من 90 يوماً").forEach { (key, label) ->
+                DetailLine(label, statement.summary.aging[key] ?: "0.00")
+            }
+            if (statement.summary.unallocatedDifference != "0.00") {
+                Text("يوجد فرق غير موزع: ${statement.summary.unallocatedDifference} ج.م", color = MaterialTheme.colorScheme.error)
+            }
+            Text("أحدث الفواتير", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            statement.purchases.data.take(5).forEach { purchase ->
+                DetailLine("${purchase.invoiceNumber} • ${purchase.purchaseDate.orEmpty()}", "متبقي ${purchase.remaining} ج.م")
+            }
+            Text("أحدث سندات السداد", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            statement.payments.data.take(5).forEach { payment ->
+                DetailLine("${payment.receiptNumber} • ${payment.paymentDate.orEmpty()}", "${payment.amount} ج.م")
+            }
+        }
+    }
+    if (receiptOpen) {
+        AlertDialog(
+            onDismissRequest = { receiptOpen = false },
+            title = { Text("فاتورة استلام مشتريات") },
+            text = {
+                Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(purchaseDate, { purchaseDate = it }, label = { Text("تاريخ الفاتورة (سنة-شهر-يوم)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    OutlinedTextField(search, {
+                        search = it
+                        onSearchReceiptProducts(it.ifBlank { null })
+                    }, label = { Text("بحث عن منتج") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    Box {
+                        OutlinedButton(onClick = { productMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text(selectedProduct?.name ?: "اختر المنتج")
+                        }
+                        DropdownMenu(expanded = productMenuOpen, onDismissRequest = { productMenuOpen = false }) {
+                            receiptProducts.items.forEach { product ->
+                                DropdownMenuItem(
+                                    text = { Text("${product.name} — ${product.costPrice ?: "التكلفة غير محددة"}") },
+                                    onClick = {
+                                        selectedProductId = product.id
+                                        unitCost = product.costPrice.orEmpty()
+                                        productMenuOpen = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    if (receiptProducts.isLoading) CircularProgressIndicator(Modifier.size(20.dp))
+                    receiptProducts.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    OutlinedTextField(quantity, { quantity = it.filter(Char::isDigit) }, label = { Text("الكمية") }, modifier = Modifier.fillMaxWidth(), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                    OutlinedTextField(unitCost, { unitCost = it }, label = { Text("تكلفة الوحدة") }, modifier = Modifier.fillMaxWidth(), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = paymentType == "credit", onClick = { paymentType = "credit" }, label = { Text("آجل") })
+                        FilterChip(selected = paymentType == "cash", onClick = { paymentType = "cash"; paidAmount = "0.00" }, label = { Text("نقدي") })
+                    }
+                    if (paymentType == "credit") OutlinedTextField(paidAmount, { paidAmount = it }, label = { Text("المدفوع الآن") }, modifier = Modifier.fillMaxWidth(), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                    OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات") }, modifier = Modifier.fillMaxWidth())
+                    Text("تكلفة الشراء تحفظ في الفاتورة ولا تغير تكلفة المنتج المسجلة.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = selectedProduct != null && quantity.toIntOrNull()?.let { it > 0 } == true && unitCost.toBigDecimalOrNull() != null && (paymentType == "cash" || paidAmount.toBigDecimalOrNull() != null),
+                    onClick = {
+                        val qty = quantity.toInt()
+                        val total = unitCost.toBigDecimal().multiply(qty.toBigDecimal()).setScale(2, java.math.RoundingMode.HALF_UP)
+                        onCreateReceipt(
+                            cached.id,
+                            PurchaseReceiptInputDto(
+                                purchaseDate = purchaseDate,
+                                paymentType = paymentType,
+                                paidAmount = if (paymentType == "cash") total.toPlainString() else paidAmount,
+                                items = listOf(PurchaseReceiptLineInputDto(selectedProduct!!.id, qty, unitCost)),
+                                notes = notes.ifBlank { null },
+                            ),
+                            UUID.randomUUID().toString(),
+                        )
+                        receiptOpen = false
+                    },
+                ) { Text("حفظ واستلام") }
+            },
+            dismissButton = { TextButton(onClick = { receiptOpen = false }) { Text("إلغاء") } },
         )
     }
 }
@@ -2024,6 +2201,155 @@ private fun ProfileScreen(
 }
 
 @Composable
+private fun BranchStockScreen(
+    stock: RemotePage<BranchStockDto>,
+    movements: RemotePage<com.storemanagement.mobile.core.network.StockMovementDto>,
+    query: String,
+    canManage: Boolean,
+    canViewMovements: Boolean,
+    onQueryChange: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onAdjust: (BranchStockDto, Int, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var selected by remember { mutableStateOf<BranchStockDto?>(null) }
+    var quantity by remember(selected) { mutableStateOf("") }
+    var reason by remember(selected) { mutableStateOf("") }
+    Column(modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(query, onQueryChange, Modifier.weight(1f), label = { Text("بحث عن منتج أو باركود") }, singleLine = true)
+            IconButton(onClick = onRefresh, enabled = !stock.isLoading) { Icon(Icons.Filled.Refresh, "تحديث") }
+        }
+        stock.error?.let { ErrorBanner(it) }
+        if (stock.isLoading && stock.items.isEmpty()) LoadingRow()
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(stock.items, key = BranchStockDto::id) { item ->
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(item.product?.name ?: "منتج #${item.productId}", fontWeight = FontWeight.SemiBold)
+                            Text("${item.branch?.name ?: "الفرع #${item.branchId}"} • رصيد: ${item.quantity} • حد الطلب: ${item.reorderLevel}")
+                            if (item.isLow) Text("المخزون منخفض", color = MaterialTheme.colorScheme.error)
+                        }
+                        if (canManage) TextButton(onClick = { selected = item }) { Text("تعديل") }
+                    }
+                }
+            }
+        }
+        if (canViewMovements) {
+            Text("آخر الحركات", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            movements.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            movements.items.take(4).forEach { movement ->
+                Text("${movement.productName ?: "منتج #${movement.productId}"} • ${if (movement.quantityDelta > 0) "+" else ""}${movement.quantityDelta} • الرصيد ${movement.balanceAfter}", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+    selected?.let { item ->
+        AlertDialog(
+            onDismissRequest = { selected = null },
+            title = { Text("تعديل رصيد المخزون") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${item.product?.name ?: "منتج #${item.productId}"} — ${item.branch?.name ?: "الفرع #${item.branchId}"}")
+                    OutlinedTextField(quantity, { quantity = it.filterIndexed { index, char -> char.isDigit() || (index == 0 && char == '-') } }, label = { Text("الزيادة أو النقص") }, singleLine = true)
+                    OutlinedTextField(reason, { reason = it }, label = { Text("سبب التعديل") }, minLines = 2)
+                }
+            },
+            confirmButton = { TextButton(onClick = { quantity.toIntOrNull()?.let { delta -> onAdjust(item, delta, reason); selected = null } }, enabled = quantity.toIntOrNull() != null && quantity.toIntOrNull() != 0 && reason.trim().length >= 5) { Text("حفظ الحركة") } },
+            dismissButton = { TextButton(onClick = { selected = null }) { Text("إلغاء") } },
+        )
+    }
+}
+
+@Composable
+private fun TrackedDevicesScreen(
+    page: RemotePage<TrackedDeviceDto>,
+    products: List<ProductDto>,
+    query: String,
+    canManage: Boolean,
+    onQueryChange: (String) -> Unit,
+    onRefresh: (String?) -> Unit,
+    onSave: (Long?, String, TrackedDeviceInputDto) -> Unit,
+    onDelete: (Long) -> Unit,
+    onLoadMore: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var editing by remember { mutableStateOf<TrackedDeviceDto?>(null) }
+    var showForm by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf<TrackedDeviceDto?>(null) }
+    var statusFilter by rememberSaveable { mutableStateOf("") }
+    Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(query, { value -> onQueryChange(value); onRefresh(statusFilter.ifBlank { null }) }, Modifier.weight(1f), label = { Text("\u0628\u062d\u062b \u0628\u0627\u0644\u0627\u0633\u0645 \u0623\u0648 IMEI \u0623\u0648 \u0627\u0644\u0631\u0642\u0645 \u0627\u0644\u062a\u0633\u0644\u0633\u0644\u064a") }, singleLine = true)
+            IconButton(onClick = { onRefresh(statusFilter.ifBlank { null }) }, enabled = !page.isLoading) { Icon(Icons.Filled.Refresh, "\u062a\u062d\u062f\u064a\u062b") }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("" to "\u0627\u0644\u0643\u0644", "in_stock" to "\u0641\u064a \u0627\u0644\u0645\u062e\u0632\u0648\u0646", "sold" to "\u0645\u0628\u0627\u0639", "repair" to "\u0642\u064a\u062f \u0627\u0644\u0625\u0635\u0644\u0627\u062d").forEach { (value, label) ->
+                FilterChip(selected = statusFilter == value, onClick = { statusFilter = value; onRefresh(value.ifBlank { null }) }, label = { Text(label) })
+            }
+            if (canManage) Button(onClick = { editing = null; showForm = true }) { Text("\u0625\u0636\u0627\u0641\u0629 \u062c\u0647\u0627\u0632") }
+        }
+        page.error?.let { ErrorBanner(it) }
+        if (page.isLoading && page.items.isEmpty()) LoadingRow()
+        if (!page.isLoading && page.items.isEmpty()) Text("\u0644\u0627 \u062a\u0648\u062c\u062f \u0623\u062c\u0647\u0632\u0629 \u0645\u0633\u062c\u0644\u0629.", modifier = Modifier.padding(16.dp))
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(page.items, key = TrackedDeviceDto::id) { device ->
+                Card { Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(device.productName ?: "\u0645\u0646\u062a\u062c #${device.productId}", fontWeight = FontWeight.SemiBold)
+                    Text("IMEI: ${device.imei ?: "?"} \u2022 \u0627\u0644\u062a\u0633\u0644\u0633\u0644\u064a: ${device.serialNumber ?: "?"}")
+                    Text("\u0627\u0644\u062d\u0627\u0644\u0629: ${when (device.status) { "in_stock" -> "\u0641\u064a \u0627\u0644\u0645\u062e\u0632\u0648\u0646"; "sold" -> "\u0645\u0628\u0627\u0639"; "returned" -> "\u0645\u0631\u062a\u062c\u0639"; "repair" -> "\u0642\u064a\u062f \u0627\u0644\u0625\u0635\u0644\u0627\u062d"; else -> "\u0645\u0633\u062a\u0628\u0639\u062f" }} \u2022 \u0627\u0644\u0639\u0645\u064a\u0644: ${device.customerName ?: "?"}")
+                    if (canManage) Row {
+                        TextButton(onClick = { editing = device; showForm = true }) { Text("\u062a\u0639\u062f\u064a\u0644") }
+                        TextButton(onClick = { deleting = device }) { Text("\u062d\u0630\u0641") }
+                    }
+                } }
+            }
+            if (page.currentPage < page.lastPage) item { LoadMoreButton(page) { onLoadMore(statusFilter.ifBlank { null }) } }
+        }
+    }
+    if (showForm) TrackedDeviceFormDialog(editing, products, onDismiss = { showForm = false }, onSave = { input ->
+        onSave(editing?.id, java.util.UUID.randomUUID().toString(), input)
+        showForm = false
+    })
+    deleting?.let { target ->
+        AlertDialog(onDismissRequest = { deleting = null }, title = { Text("\u062a\u0623\u0643\u064a\u062f \u062d\u0630\u0641 \u0627\u0644\u062c\u0647\u0627\u0632") }, text = { Text("\u0633\u064a\u062a\u0645 \u062d\u0630\u0641 \u0633\u062c\u0644 \u0627\u0644\u062c\u0647\u0627\u0632. \u0647\u0644 \u062a\u0631\u064a\u062f \u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629\u061f") }, confirmButton = { TextButton(onClick = { onDelete(target.id); deleting = null }) { Text("\u062d\u0630\u0641") } }, dismissButton = { TextButton(onClick = { deleting = null }) { Text("\u0625\u0644\u063a\u0627\u0621") } })
+    }
+}
+
+@Composable
+private fun TrackedDeviceFormDialog(device: TrackedDeviceDto?, products: List<ProductDto>, onDismiss: () -> Unit, onSave: (TrackedDeviceInputDto) -> Unit) {
+    var productId by remember(device) { mutableStateOf(device?.productId?.toString().orEmpty()) }
+    var imei by remember(device) { mutableStateOf(device?.imei.orEmpty()) }
+    var serial by remember(device) { mutableStateOf(device?.serialNumber.orEmpty()) }
+    var status by remember(device) { mutableStateOf(device?.status ?: "in_stock") }
+    var customer by remember(device) { mutableStateOf(device?.customerName.orEmpty()) }
+    var invoice by remember(device) { mutableStateOf(device?.invoiceId?.toString().orEmpty()) }
+    var notes by remember(device) { mutableStateOf(device?.notes.orEmpty()) }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (device == null) "\u062a\u0633\u062c\u064a\u0644 \u062c\u0647\u0627\u0632" else "\u062a\u0639\u062f\u064a\u0644 \u0627\u0644\u062c\u0647\u0627\u0632") },
+        text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            var productMenu by remember { mutableStateOf(false) }
+            Box {
+                TextButton(onClick = { productMenu = true }) { Text(products.firstOrNull { it.id.toString() == productId }?.name ?: "\u0627\u062e\u062a\u0631 \u0627\u0644\u0645\u0646\u062a\u062c") }
+                DropdownMenu(expanded = productMenu, onDismissRequest = { productMenu = false }) {
+                    products.forEach { product -> DropdownMenuItem(text = { Text(product.name) }, onClick = { productId = product.id.toString(); productMenu = false }) }
+                }
+            }
+            OutlinedTextField(imei, { imei = it }, label = { Text("IMEI") }, singleLine = true)
+            OutlinedTextField(serial, { serial = it }, label = { Text("\u0627\u0644\u0631\u0642\u0645 \u0627\u0644\u062a\u0633\u0644\u0633\u0644\u064a") }, singleLine = true)
+            var statusMenu by remember { mutableStateOf(false) }
+            Box {
+                TextButton(onClick = { statusMenu = true }) { Text("\u0627\u0644\u062d\u0627\u0644\u0629: " + when (status) { "in_stock" -> "\u0641\u064a \u0627\u0644\u0645\u062e\u0632\u0648\u0646"; "sold" -> "\u0645\u0628\u0627\u0639"; "returned" -> "\u0645\u0631\u062a\u062c\u0639"; "repair" -> "\u0642\u064a\u062f \u0627\u0644\u0625\u0635\u0644\u0627\u062d"; else -> "\u0645\u0633\u062a\u0628\u0639\u062f" }) }
+                DropdownMenu(expanded = statusMenu, onDismissRequest = { statusMenu = false }) {
+                    listOf("in_stock", "sold", "returned", "repair", "retired").forEach { value -> DropdownMenuItem(text = { Text(value) }, onClick = { status = value; statusMenu = false }) }
+                }
+            }
+            OutlinedTextField(customer, { customer = it }, label = { Text("\u0627\u0633\u0645 \u0627\u0644\u0639\u0645\u064a\u0644") }, singleLine = true)
+            OutlinedTextField(invoice, { invoice = it.filter(Char::isDigit) }, label = { Text("\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 (\u0627\u062e\u062a\u064a\u0627\u0631\u064a)") }, singleLine = true)
+            OutlinedTextField(notes, { notes = it }, label = { Text("\u0645\u0644\u0627\u062d\u0638\u0627\u062a") })
+        } }, confirmButton = { TextButton(onClick = { productId.toLongOrNull()?.let { onSave(TrackedDeviceInputDto(it, imei.ifBlank { null }, serial.ifBlank { null }, status, customer.ifBlank { null }, invoice.toLongOrNull(), notes.ifBlank { null })) } }, enabled = productId.toLongOrNull() != null && status in setOf("in_stock", "sold", "returned", "repair", "retired")) { Text("\u062d\u0641\u0638") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("\u0625\u0644\u063a\u0627\u0621") } })
+}
+
+@Composable
 private fun MoreHubScreen(
     canViewCategories: Boolean,
     canViewCustomers: Boolean,
@@ -2033,9 +2359,12 @@ private fun MoreHubScreen(
     canViewWalletCashier: Boolean,
     canViewProductCashier: Boolean,
     canViewSales: Boolean,
+    canViewSalesReports: Boolean,
     canViewNotifications: Boolean,
     canViewMaintenance: Boolean,
     canViewDamaged: Boolean,
+    canViewBranchStock: Boolean,
+    canViewDevices: Boolean,
     canViewBackup: Boolean,
     onOpenProfile: () -> Unit,
     onOpenCategories: () -> Unit,
@@ -2046,9 +2375,12 @@ private fun MoreHubScreen(
     onOpenWalletCashier: () -> Unit,
     onOpenProductCashier: () -> Unit,
     onOpenSales: () -> Unit,
+    onOpenSalesReports: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenMaintenance: () -> Unit,
     onOpenDamaged: () -> Unit,
+    onOpenBranchStock: () -> Unit,
+    onOpenDevices: () -> Unit,
     onOpenBackup: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -2065,12 +2397,15 @@ private fun MoreHubScreen(
             if (canViewCategories) MoreActionRow("التصنيفات", "تصنيفات المنتجات", Icons.Filled.Category, onOpenCategories)
             if (canViewCustomers) MoreActionRow("العملاء", "قائمة العملاء والبحث وإدارة بياناتهم", Icons.Filled.People, onOpenCustomers)
             if (canViewSales) MoreActionRow("المبيعات", "المنتجات المباعة حسب إجمالي الفواتير", Icons.Filled.BarChart, onOpenSales)
+            if (canViewSalesReports) MoreActionRow("تقارير المبيعات", "ملخص وتحليل المبيعات", Icons.Filled.BarChart, onOpenSalesReports)
             if (canViewSuppliers) MoreActionRow("الموردون", "الأرصدة والحسابات الدائنة", Icons.Filled.People, onOpenSuppliers)
             if (canViewInstallments) MoreActionRow("الأقساط والديون", "الأرصدة ومواعيد السداد", Icons.AutoMirrored.Filled.ReceiptLong, onOpenInstallments)
             if (canViewWallets) MoreActionRow("المحافظ", "الأرصدة والنقدية والحدود", Icons.Filled.AccountBalanceWallet, onOpenWallets)
             if (canViewWalletCashier) MoreActionRow("كاشير المحافظ", "تسجيل التحويلات والتحصيلات", Icons.Filled.AccountBalanceWallet, onOpenWalletCashier)
             if (canViewProductCashier) MoreActionRow("نقطة البيع", "بحث المنتجات والسلة والتحصيل", Icons.Filled.Store, onOpenProductCashier)
             if (canViewDamaged) MoreActionRow("الهالك", "تسجيل التالف وعكس القيود بالسبب", Icons.Filled.Delete, onOpenDamaged)
+            if (canViewBranchStock) MoreActionRow("مخزون الفروع", "أرصدة الفروع وحركات المخزون", Icons.Filled.Inventory2, onOpenBranchStock)
+            if (canViewDevices) MoreActionRow("\u0627\u0644\u0623\u062c\u0647\u0632\u0629 \u0627\u0644\u0645\u062a\u062a\u0628\u0639\u0629", "IMEI / Serial", Icons.Filled.Inventory2, onOpenDevices)
             if (canViewMaintenance) MoreActionRow("الصيانة", "طلبات الصيانة وحالتها", Icons.Filled.Build, onOpenMaintenance)
         }
         if (canViewNotifications) {
@@ -2569,6 +2904,96 @@ private fun SalesListScreen(
                 }
                 item { LoadMoreButton(state, onLoadMore) }
             }
+        }
+    }
+}
+
+@Composable
+private fun SalesReportScreen(
+    state: SalesReportUiState,
+    onRun: (String, String, String, String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val today = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()) }
+    var from by rememberSaveable { mutableStateOf(today.take(7) + "-01") }
+    var to by rememberSaveable { mutableStateOf(today) }
+    var groupBy by rememberSaveable { mutableStateOf("day") }
+    var paymentStatus by rememberSaveable { mutableStateOf("") }
+    Column(
+        modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(from, { from = it }, Modifier.weight(1f), label = { Text("من تاريخ") }, singleLine = true)
+            OutlinedTextField(to, { to = it }, Modifier.weight(1f), label = { Text("إلى تاريخ") }, singleLine = true)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("day" to "يومي", "week" to "أسبوعي", "month" to "شهري").forEach { (value, label) ->
+                FilterChip(selected = groupBy == value, onClick = { groupBy = value }, label = { Text(label) })
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("" to "كل الحالات", "paid" to "مدفوعة", "partial" to "جزئية", "unpaid" to "غير مدفوعة").forEach { (value, label) ->
+                FilterChip(selected = paymentStatus == value, onClick = { paymentStatus = value }, label = { Text(label) })
+            }
+        }
+        Button(
+            onClick = { onRun(from.trim(), to.trim(), groupBy, paymentStatus.ifBlank { null }) },
+            enabled = !state.isLoading && Regex("\\d{4}-\\d{2}-\\d{2}").matches(from) && Regex("\\d{4}-\\d{2}-\\d{2}").matches(to),
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("عرض التقرير") }
+        state.error?.let { ErrorBanner(it) }
+        if (state.isLoading && state.report == null) LoadingRow()
+        state.report?.let { report ->
+            if (report.summary.missingCostQuantity > 0) {
+                Text("تنبيه: تكلفة ${report.summary.missingCostQuantity} قطعة غير محددة أو صفر؛ الربح غير مكتمل.", color = MaterialTheme.colorScheme.error)
+            }
+            if (report.summary.estimatedCostQuantity > 0) {
+                Text("تكلفة ${report.summary.estimatedCostQuantity} قطعة من الفواتير القديمة تقديرية حسب التكلفة الحالية وقت الترحيل.", color = MaterialTheme.colorScheme.tertiary)
+            }
+            listOf(
+                "إجمالي المبيعات" to report.summary.grossSales,
+                "المرتجعات" to report.summary.refunds,
+                "صافي المبيعات" to report.summary.netSales,
+                "تكلفة البضاعة" to report.summary.costOfGoods,
+                "مجمل الربح" to report.summary.grossProfit,
+                "متوسط الفاتورة" to report.summary.averageTicket,
+            ).chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    pair.forEach { (label, amount) ->
+                        Card(Modifier.weight(1f)) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("$amount ج.م", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+            Text("${report.summary.invoiceCount} فاتورة • ${report.summary.refundCount} مرتجع", style = MaterialTheme.typography.titleSmall)
+            Text("الأداء حسب الفترة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            report.trend.forEach { row -> DetailLine(row.period, "${row.netSales} ج.م • ${row.invoiceCount} فاتورة") }
+            Text("الأكثر مبيعاً", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            report.products.top.forEach { row -> DetailLine(row.name, "${row.quantity} • ${row.netSales} ج.م") }
+            Text("الأقل مبيعاً", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            report.products.bottom.forEach { row -> DetailLine(row.name, "${row.quantity} • ${row.netSales} ج.م") }
+            Text("المبيعات حسب التصنيف", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            report.categories.forEach { row -> DetailLine(row.name, "${row.quantity} • ${row.netSales} ج.م") }
+            Text("المبيعات حسب الكاشير", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            report.cashiers.forEach { row -> DetailLine(row.name, "${row.invoiceCount} فاتورة • ${row.netSales} ج.م") }
+            Text("حالة السداد", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            report.paymentStatuses.forEach { row ->
+                val label = when (row.status) {
+                    "paid" -> "مدفوعة"
+                    "partial" -> "مدفوعة جزئياً"
+                    else -> "غير مدفوعة"
+                }
+                DetailLine(label, row.invoiceCount.toString())
+            }
+            Text("الخصومات ووسائل الدفع غير مسجلة بشكل مستقل في النظام الحالي.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } ?: if (!state.isLoading && state.error == null) {
+            EmptyState("اختر الفترة ثم اعرض التقرير")
         }
     }
 }

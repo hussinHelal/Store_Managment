@@ -1,25 +1,25 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CashierController;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\BackupController;
-use App\Http\Controllers\CustomersController;
-use App\Http\Controllers\SalesController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\ProductsController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\InstallmentOperationsController;
-use App\Http\Controllers\PersonalDebtOperationsController;
-use App\Http\Controllers\InvoiceOperationsController;
-use App\Http\Controllers\StaffController;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\AppNotificationController;
-use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BackupController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CustomersController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\InstallmentOperationsController;
+use App\Http\Controllers\InvoiceOperationsController;
+use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\PersonalDebtOperationsController;
 use App\Http\Controllers\ProductImageController;
+use App\Http\Controllers\ProductsController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SalesController;
+use App\Http\Controllers\SalesReportController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\StaffController;
+use App\Http\Controllers\SupplierController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->middleware(['auth:sanctum', 'page.access'])->name('home');
 
@@ -44,17 +44,17 @@ Route::middleware(['auth:sanctum', 'page.access'])->group(function () {
         ->name('invoices.products.search');
     Route::resource('/installments', InstallmentOperationsController::class)->except(['store', 'update', 'destroy']);
     Route::put('/installments/{installment}', [InstallmentOperationsController::class, 'update'])->can('update-installments')
-    ->name('installments.update');
+        ->name('installments.update');
     Route::get('/installments/{id}/pay', [InstallmentOperationsController::class, 'showPay'])->can('update-installments')
-    ->name('installments.showPay');
+        ->name('installments.showPay');
     Route::put('/installments/{installment}/pay', [InstallmentOperationsController::class, 'pay'])->can('update-installments')
-    ->name('installments.pay');
+        ->name('installments.pay');
     Route::put('/installments/{installment}/status', [InstallmentOperationsController::class, 'changeStatus'])->can('update-installments')
         ->name('installments.status');
     Route::post('/installments', [InstallmentOperationsController::class, 'store'])->can('create-installments')
-    ->name('installments.store');
+        ->name('installments.store');
     Route::delete('/installments/{installment}', [InstallmentOperationsController::class, 'destroy'])->can('delete-installments')
-    ->name('installments.destroy');
+        ->name('installments.destroy');
     Route::get('/personal-debts/create', [PersonalDebtOperationsController::class, 'create'])->can('create-installments')
         ->name('personal-debts.create');
     Route::post('/personal-debts', [PersonalDebtOperationsController::class, 'store'])->can('create-installments')
@@ -71,65 +71,85 @@ Route::middleware(['auth:sanctum', 'page.access'])->group(function () {
         ->name('personal-debts.destroy');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::resource('/customers', CustomersController::class)->except(['store', 'update', 'destroy']);
-        Route::post('/customers', [CustomersController::class, 'store'])->can('create-customers')
-    ->name('customers.store');
-        Route::put('/customers/{customer}', [CustomersController::class, 'update'])->can('update-customers')
-    ->name('customers.update');
-        Route::delete('/customers/{customer}', [CustomersController::class, 'destroy'])->can('delete-customers')
-    ->name('customers.destroy');
+    Route::post('/customers', [CustomersController::class, 'store'])->can('create-customers')
+        ->name('customers.store');
+    Route::put('/customers/{customer}', [CustomersController::class, 'update'])->can('update-customers')
+        ->name('customers.update');
+    Route::delete('/customers/{customer}', [CustomersController::class, 'destroy'])->can('delete-customers')
+        ->name('customers.destroy');
 
     Route::resource('/sales', SalesController::class);
+    Route::get('/sales-reports/export', [SalesReportController::class, 'export'])->name('sales_reports.export');
+    Route::get('/sales-reports/pdf', [SalesReportController::class, 'pdf'])->name('sales_reports.pdf');
+    Route::get('/sales-reports', [SalesReportController::class, 'index'])->name('sales_reports.index');
     Route::resource('/categories', CategoryController::class)->except(['store', 'update', 'destroy']);
-        Route::post('/categories', [CategoryController::class, 'store'])->can('create-category')
-    ->name('categories.store');
-        Route::put('/categories/{category}', [CategoryController::class, 'update'])->can('update-category')
-    ->name('categories.update');
-        Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->can('delete-category')
-    ->name('categories.destroy');
+    Route::post('/categories', [CategoryController::class, 'store'])->can('create-category')
+        ->name('categories.store');
+    Route::put('/categories/{category}', [CategoryController::class, 'update'])->can('update-category')
+        ->name('categories.update');
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->can('delete-category')
+        ->name('categories.destroy');
 
     Route::resource('/products', ProductsController::class)->except(['store', 'update', 'destroy']);
-        Route::post('/products', [ProductsController::class, 'store'])->can('create-products')
-    ->name('products.store');
-        Route::put('/products/{product}', [ProductsController::class, 'update'])->can('update-products')
-    ->name('products.update');
-        Route::delete('/products/{product}', [ProductsController::class, 'destroy'])->can('delete-products')
-    ->name('products.destroy');
-        Route::get('/products/{product}/print-label', [ProductsController::class, 'printLabel'])->name('products.printLabel');
+    Route::post('/products', [ProductsController::class, 'store'])->can('create-products')
+        ->name('products.store');
+    Route::put('/products/{product}', [ProductsController::class, 'update'])->can('update-products')
+        ->name('products.update');
+    Route::delete('/products/{product}', [ProductsController::class, 'destroy'])->can('delete-products')
+        ->name('products.destroy');
+    Route::get('/products/{product}/print-label', [ProductsController::class, 'printLabel'])->name('products.printLabel');
 
     Route::resource('/invoices', InvoiceOperationsController::class)->except(['store', 'update', 'destroy']);
-        Route::post('/invoices', [InvoiceOperationsController::class, 'store'])->can('create-invoice')
-    ->name('invoices.store');
-        Route::put('/invoices/{invoice}', [InvoiceOperationsController::class, 'update'])->can('update-invoice')
-    ->name('invoices.update');
-        Route::delete('/invoices/{invoice}', [InvoiceOperationsController::class, 'destroy'])->can('delete-invoice')
-    ->name('invoices.destroy');
-        Route::post('/invoices/{invoice}/refund', [InvoiceOperationsController::class, 'refund'])->can('refund-invoice', 'invoice')
-    ->name('invoices.refund');
-        Route::get('/invoices/{invoice}/print', [InvoiceOperationsController::class, 'print'])->name('invoices.print');
+    Route::post('/invoices', [InvoiceOperationsController::class, 'store'])->can('create-invoice')
+        ->name('invoices.store');
+    Route::put('/invoices/{invoice}', [InvoiceOperationsController::class, 'update'])->can('update-invoice')
+        ->name('invoices.update');
+    Route::delete('/invoices/{invoice}', [InvoiceOperationsController::class, 'destroy'])->can('delete-invoice')
+        ->name('invoices.destroy');
+    Route::post('/invoices/{invoice}/refund', [InvoiceOperationsController::class, 'refund'])->can('refund-invoice', 'invoice')
+        ->name('invoices.refund');
+    Route::get('/invoices/{invoice}/print', [InvoiceOperationsController::class, 'print'])->name('invoices.print');
 
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::get('/profile/{profile}/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/users/{user}/role', [RoleController::class, 'updateLegacyAssignment'])
         ->middleware('superadmin')->name('profile.users.role.update');
-        Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
-        Route::get('/backup/export', [BackupController::class, 'export'])->name('backup.export');
-        Route::post('/backup/import', [BackupController::class, 'webImport'])->name('backup.import');
-        Route::get('/notifications', [AppNotificationController::class, 'list'])->name('notifications.list');
-        Route::post('/notifications/mark-all-read', [AppNotificationController::class, 'markAllRead'])->name('notifications.markAllRead');
-        Route::post('/notifications/{id}/mark-read', [AppNotificationController::class, 'markRead'])->name('notifications.markRead');
-        Route::get('/admin/notifications', [AppNotificationController::class, 'index'])->name('admin.notifications.index');
-        Route::get('/admin/notifications/create', [AppNotificationController::class, 'create'])->name('admin.notifications.create');
-        Route::post('/admin/notifications', [AppNotificationController::class, 'store'])->name('admin.notifications.store');
-        Route::delete('/admin/notifications/{id}', [AppNotificationController::class, 'destroy'])->name('admin.notifications.destroy');
+    Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
+    Route::get('/backup/export', [BackupController::class, 'export'])->name('backup.export');
+    Route::post('/backup/import', [BackupController::class, 'webImport'])->name('backup.import');
+    Route::get('/notifications', [AppNotificationController::class, 'list'])->name('notifications.list');
+    Route::post('/notifications/mark-all-read', [AppNotificationController::class, 'markAllRead'])->name('notifications.markAllRead');
+    Route::post('/notifications/{id}/mark-read', [AppNotificationController::class, 'markRead'])->name('notifications.markRead');
+    Route::get('/admin/notifications', [AppNotificationController::class, 'index'])->name('admin.notifications.index');
+    Route::get('/admin/notifications/create', [AppNotificationController::class, 'create'])->name('admin.notifications.create');
+    Route::post('/admin/notifications', [AppNotificationController::class, 'store'])->name('admin.notifications.store');
+    Route::delete('/admin/notifications/{id}', [AppNotificationController::class, 'destroy'])->name('admin.notifications.destroy');
+
+    Route::get('/devices', [App\Http\Controllers\TrackedDeviceController::class, 'index'])->name('devices.index');
+    Route::post('/devices', [App\Http\Controllers\TrackedDeviceController::class, 'store'])->name('devices.store');
+    Route::put('/devices/{device}', [App\Http\Controllers\TrackedDeviceController::class, 'update'])->whereNumber('device')->name('devices.update');
+    Route::delete('/devices/{device}', [App\Http\Controllers\TrackedDeviceController::class, 'destroy'])->whereNumber('device')->name('devices.destroy');
+
+    Route::get('/used-phones', [App\Http\Controllers\UsedPhoneController::class, 'index'])->name('used_phones.index');
+    Route::post('/used-phones', [App\Http\Controllers\UsedPhoneController::class, 'store'])->name('used_phones.store');
+    Route::put('/used-phones/{usedPhone}', [App\Http\Controllers\UsedPhoneController::class, 'update'])->whereNumber('usedPhone')->name('used_phones.update');
+    Route::delete('/used-phones/{usedPhone}', [App\Http\Controllers\UsedPhoneController::class, 'destroy'])->whereNumber('usedPhone')->name('used_phones.destroy');
+
+    Route::resource('/installation-appointments', App\Http\Controllers\InstallationAppointmentController::class)
+        ->except(['show'])->parameters(['installation-appointments' => 'appointment'])->names('installations');
 
     Route::resource('/maintenance', MaintenanceController::class);
     Route::get('/maintenance/{maintenance}/showRepaired', [MaintenanceController::class, 'showRepaired'])->name('maintenance.showRepaired');
     Route::put('/maintenance/{maintenance}/repaired', [MaintenanceController::class, 'repaired'])->name('maintenance.repaired');
 
     Route::resource('/suppliers', SupplierController::class);
+    Route::get('/suppliers/{supplier}/statement', [SupplierController::class, 'statement'])
+        ->name('suppliers.statement');
     Route::post('/suppliers/{supplier}/purchases', [SupplierController::class, 'storePurchase'])
         ->name('suppliers.purchases.store');
+    Route::post('/suppliers/{supplier}/receipts', [SupplierController::class, 'storeReceipt'])
+        ->name('suppliers.receipts.store');
     Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])
         ->name('suppliers.payments.store');
 
@@ -148,3 +168,4 @@ Route::middleware(['auth:sanctum', 'page.access'])->group(function () {
 require __DIR__.'/cashier.php';
 require __DIR__.'/wallets.php';
 require __DIR__.'/damaged.php';
+require __DIR__.'/branch_stock.php';

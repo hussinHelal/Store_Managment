@@ -50,4 +50,12 @@ The initial client includes authentication, catalog/customer/invoice lists, cust
 
 ## Implementation Status
 
+The current implementation has progressed beyond the original proposal. Branch inventory now uses additive branch, branch stock, movement, transfer, and stocktake tables. `StockService` is the writer for active invoice, product, damage, transfer, and stocktake paths; `CurrentBranch` scopes cashier/damage availability. `stock:verify` reports divergence without mutation. Arabic web pages and the v1 branch-stock API exist. Android now has a branch inventory list and manual adjustment flow, but has not been compiled in this environment; transfers and stocktakes are still missing from Android. See `docs/FINAL_REPORT.md` for feature status and verification.
+
+Supplier balances now have an Arabic web/API statement with filtered purchase and payment history, Cairo aging buckets, and a reconciliation difference field. Android supplier details display aging and recent history. This is a read feature over the existing supplier ledger; purchase receiving and supplier payment CRUD parity remain outstanding.
+
+
 The v1 API currently includes token issue/revoke, a minimal current-user resource, authorized paginated list/detail reads for products/categories/customers/invoices, category/customer CRUD, and idempotent invoice creation through the existing transaction service. The Android app is implemented in source but has not been built or run; Android Studio/JDK/SDK are unavailable in the current environment. Category, customer, and invoice creation use the additive idempotency table migration, which has not been applied to a live database. Other business writes remain unavailable.
+
+
+Sales reporting now uses an `invoice_items` snapshot table populated transactionally by `InvoiceCreationService`. It retains sale-time product name, unit price, manually set unit cost, quantity, and line total, with legacy costs flagged as estimates. `SalesReportService` aggregates by date, branch, cashier, product, category, and payment status; HTML/PDF/CSV and `/api/v1/sales-reports` share one validated filter contract. Discounts and actual tender methods are not source fields and are not inferred.

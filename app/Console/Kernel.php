@@ -2,12 +2,14 @@
 
 namespace App\Console;
 
+use App\Console\Commands\VerifyStock;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
     protected $commands = [
+        VerifyStock::class,
     ];
 
     protected function schedule(Schedule $schedule)
@@ -22,7 +24,7 @@ class Kernel extends ConsoleKernel
                 $files = array_diff(scandir($backupDir, SCANDIR_SORT_DESCENDING), ['.', '..']);
                 $files = array_slice($files, 12); // Keep only last 12
                 foreach ($files as $file) {
-                    @unlink($backupDir . DIRECTORY_SEPARATOR . $file);
+                    @unlink($backupDir.DIRECTORY_SEPARATOR.$file);
                 }
             }
         })->monthlyOn(2, '03:00'); // Run cleanup on 2nd at 3 AM

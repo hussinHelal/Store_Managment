@@ -16,7 +16,7 @@ class WalletAuditController extends Controller
 
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:80'],
-            'action' => ['nullable', Rule::in(array_keys(AuditPresenter::ACTIONS))],
+            'action' => ['nullable', Rule::in([...array_keys(AuditPresenter::ACTIONS), 'transaction.'])],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
@@ -45,7 +45,14 @@ class WalletAuditController extends Controller
                     }
                 });
             })
-            ->when(! empty($filters['action']), fn ($query) => $query->where('action', $filters['action']))
+            ->when(! empty($filters['action']), function ($query) use ($filters): void {
+                $action = $filters['action'];
+                if (str_ends_with($action, '.')) {
+                    $query->where('action', 'like', addcslashes($action, '%_\\').'%');
+                } else {
+                    $query->where('action', $action);
+                }
+            })
             ->when(! empty($filters['from']), fn ($query) => $query->whereDate('created_at', '>=', $filters['from']))
             ->when(! empty($filters['to']), fn ($query) => $query->whereDate('created_at', '<=', $filters['to']))
             ->latest('id')

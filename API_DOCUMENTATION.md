@@ -2,7 +2,7 @@
 
 **Version:** v1  
 **Base path:** `/api/v1`  
-**Status:** Authentication, list/detail reads, customer/category/product/supplier creation, standalone catalog or custom-total installment creation, wallet creation and balance management, user-scoped notifications, and invoice creation are implemented. Other write workflows remain permission-gated and limited to the documented operations.
+**Status:** Includes stock/branch workflows, supplier statements and purchase receiving, alongside the catalog, sales, wallet, and maintenance endpoints documented below. Each write remains permission-gated and validated server-side.
 
 ## Authentication
 
@@ -41,6 +41,7 @@ Send the token as `Authorization: Bearer <token>`. `DELETE /auth/token` revokes 
 | `GET /cashier/products` | `page.invoices.manage` ability and `create-invoice` gate | Optional `q` | Top sellers or name/barcode matches, with exact barcode matches prioritized |
 | `POST /cashier/checkout` | `page.invoices.manage` ability and `create-invoice` gate | JSON items, optional customer/received amount, required `Idempotency-Key` | `201` invoice totals and change; server checks current prices/stock and safely replays retries |
 | `GET /sales` | `page.sales.view` ability and current `page.sales.view` permission | `q`, `page`, `per_page` | Read-only sold-product totals from `products.total_sold`, matching the Laravel report |
+| `GET /sales-reports` | `page.sales_reports.view` ability and current permission | Required `from`, `to`; optional branch/cashier/category/product IDs, `payment_status=paid|partial|unpaid`, `group_by=day|week|month` | Aggregated sales, refunds, net, cost/profit snapshots, estimated/missing-cost counts, trend and product/category/cashier/payment-status breakdowns. Discounts/payment method are explicitly unavailable because the invoice workflow does not record them.
 | `GET /maintenance` | `page.maintenance.view` ability and current `page.maintenance.view` permission | `q`, `page`, `per_page` | Maintenance requests with status, dates, and contact details; internal notes and image paths are omitted from view-only responses |
 | `GET /maintenance/{maintenance}` | `page.maintenance.view` ability and current `page.maintenance.view` permission | Numeric maintenance ID | Allowlisted maintenance details; `notes` is returned only with `page.maintenance.manage` |
 | `POST /maintenance` | `page.maintenance.manage` ability and current `page.maintenance.manage` permission | JSON name, owner, status, requested date, optional phone/address/description/notes, required `Idempotency-Key` | `201` maintenance resource; identical retries replay |
@@ -54,6 +55,9 @@ Send the token as `Authorization: Bearer <token>`. `DELETE /auth/token` revokes 
 | `DELETE /installments/{installment}` | `page.installments.manage` ability and `delete-installments` gate | Required `Idempotency-Key` | `204` standalone installment deleted; invoice-linked installments cannot be deleted |
 | `GET /suppliers` | `page.suppliers.view` ability and current `page.suppliers.view` permission | `q`, `page`, `per_page` | Allowlisted supplier contact/payable summary with purchase count; ordered by balance then name |
 | `GET /suppliers/{supplier}` | `page.suppliers.view` ability and current `page.suppliers.view` permission | Numeric supplier ID | Allowlisted supplier contact/payable summary; `notes` is returned only with `page.suppliers.manage`; payment records are not included |
+| `GET /suppliers/{supplier}/statement` | `page.suppliers.view` ability and current permission | Optional `from`, `to`, `status=all|open|paid`, `per_page` | Opening and recorded balances, aging totals, difference warning, and independently paginated purchase/payment history |
+| `GET /suppliers/receipt-products` | `page.suppliers.manage` | Optional `q`, `per_page` | Product catalog and manually maintained cost for receiving |
+| `POST /suppliers/{supplier}/receipts` | `page.suppliers.manage` | Branch, date, payment type/amount, notes, product lines, required `Idempotency-Key` | Creates purchase and line snapshots, increases selected branch stock through the stock service, records payable/payment, does not overwrite product cost; identical retries replay |
 | `POST /suppliers` | `page.suppliers.manage` ability and current `page.suppliers.manage` permission | JSON name and optional contact/address/opening balance/notes, required `Idempotency-Key` | `201` supplier resource; opening balance initializes the payable balance |
 | `PUT /suppliers/{supplier}` | `page.suppliers.manage` ability and current `page.suppliers.manage` permission | Supplier fields and required `Idempotency-Key` | Updated supplier; omitted private notes are preserved |
 | `DELETE /suppliers/{supplier}` | `page.suppliers.manage` ability and current `page.suppliers.manage` permission | Required `Idempotency-Key` | `204` only if no purchase or payment history exists; otherwise `422` and all history remains |
@@ -106,4 +110,37 @@ Customer, category, product, supplier, wallet, maintenance, wallet-cashier, and 
 
 Installment update/deletion/payment, supplier purchase/payment, wallet expenses/cash-drawer operations, damaged-stock writes, admin notification creation/deletion, invoice update/refund/delete, and offline-write APIs are not enabled. Wallet transaction rows are append-only and cannot be edited or deleted; corrections use reversals. No registration, password-reset, or payment-provider endpoint is provided.
 
-The machine-readable initial contract is in [`openapi.yaml`](openapi.yaml).
+## Branch inventory, movements, and stocktakes (added 2026-11-18)
+
+All inventory mutations use a locked `StockService` and append-only stock movement records. `products.stock` remains an aggregate for older clients; branch availability is authoritative for cashier and damaged-stock operations. Every write accepts a stable `Idempotency-Key` header.
+
+| Method and path | Permission | Behavior |
+|---|---|---|
+| `GET /branches` | `page.branch_stock.view` | Paginated active branches |
+| `POST /branches`, `PUT /branches/{branch}`, `DELETE /branches/{branch}` | `page.branch_stock.manage` | Manage branches; main/nonempty branches cannot be disabled or deleted |
+| `GET /branch-stock` | `page.branch_stock.view` | Paginated stock with branch/category/search/availability filters |
+| `PUT /branch-stock/{branchStock}/reorder-level` | `page.branch_stock.manage` | Set the branch/product reorder threshold |
+| `GET /stock-movements` | `page.stock_movements.view` | Paginated append-only ledger with branch/product/type/date filters |
+| `POST /stock-movements/adjust` | `page.stock_movements.manage` | Idempotent signed adjustment; reason and branch are required |
+| `GET, POST /stock-transfers` and `PUT, DELETE /stock-transfers/{transfer}` | branch stock view/manage | Create/edit/delete drafts; send, receive or cancel using the corresponding action routes |
+| `GET, POST /stocktakes`, `GET /stocktakes/{stocktake}` | `page.stocktake.view/manage` | Start snapshots and inspect counts |
+| `PUT /stocktakes/{stocktake}/items/{item}`, `POST .../review`, `POST .../cancel` | `page.stocktake.manage` | Count, review or cancel a count |
+| `POST /stocktakes/{stocktake}/approve` | `page.stocktake.approve` | Post count differences as compensating stock movements |
+
+The `stock:verify` command is diagnostic only and never repairs data. Do not use the legacy JSON/XLSX catalog import to change product stock: imports now reject quantity changes that lack branch-ledger history. Deploy the branch migrations to staging and take a database backup before production migration.
+
+The machine-readable initial contract is in [`openapi.yaml`](openapi.yaml); inventory and tracked-device endpoints are documented in the OpenAPI contract.
+
+
+## Tracked devices (added 2026-11-18)
+
+`GET /devices` and `GET /devices/{device}` require `page.devices.view`. The paginated list accepts `q`, `status` (`in_stock`, `sold`, `returned`, `repair`, `retired`) and `per_page` (1 to 100). `POST /devices`, `PUT /devices/{device}`, and `DELETE /devices/{device}` require `page.devices.manage` and an `Idempotency-Key` header. Device records use a product, unique optional IMEI and serial number, status, customer/invoice reference, and notes. Sold device identity is immutable; sold/invoice-linked records cannot be deleted.
+
+## Used phones (added 2026-11-18)
+
+`GET /used-phones` requires `page.used_phones.view` and accepts `search`, `status`, `condition`, and `per_page`. `POST /used-phones`, `PUT /used-phones/{usedPhone}`, and `DELETE /used-phones/{usedPhone}` require `page.used_phones.manage` and `Idempotency-Key`. Records include brand/model, optional unique IMEI and serial, condition, purchase/asking prices, purchase date, seller contact, inventory status, optional image, and inspection notes. Sold records cannot be deleted. Image requests use multipart form data; JSON clients can omit the optional image.
+
+
+## Installation appointments (added 2026-11-18)
+
+`GET /installation-appointments` requires `page.installations.view` and filters by search term, date, and status. Create, update, and delete require `page.installations.manage` and `Idempotency-Key`. Fields cover customer contact, device, service type/details, scheduled date/time, duration, optional technician, status, address, and notes. Active appointments for the same technician may not overlap; completed and cancelled appointments do not reserve technician time.

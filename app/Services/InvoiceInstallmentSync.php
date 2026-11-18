@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\installments;
 use App\Models\invoice;
+use App\Support\Money;
 
 /**
  * Creates or updates the installment (debt) row that belongs to an invoice.
@@ -16,9 +17,11 @@ use App\Models\invoice;
  */
 class InvoiceInstallmentSync
 {
-    public function sync(invoice $invoice, array $items, float $totalAmount, float $paidAmount): void
+    public function sync(invoice $invoice, array $items, string|int $totalAmount, string|int $paidAmount): void
     {
-        $remainingCents = max(0, (int) round($totalAmount * 100) - (int) round($paidAmount * 100));
+        $totalCents = Money::cents($totalAmount);
+        $paidCents = Money::cents($paidAmount);
+        $remainingCents = max(0, $totalCents - $paidCents);
 
         $installment = installments::query()
             ->where('invoice_id', $invoice->id)
@@ -30,10 +33,10 @@ class InvoiceInstallmentSync
             'customer' => $invoice->customer,
             'product_id' => $invoice->product_id,
             'product_name' => collect($items)->pluck('name')->implode(', '),
-            'product_price' => number_format($totalAmount, 2, '.', ''),
+            'product_price' => Money::decimal($totalCents),
             'quantity' => $invoice->quantity,
-            'paid_amount' => number_format($paidAmount, 2, '.', ''),
-            'remaining' => number_format($remainingCents / 100, 2, '.', ''),
+            'paid_amount' => Money::decimal($paidCents),
+            'remaining' => Money::decimal($remainingCents),
             'status' => $remainingCents === 0 ? 'مكتمل' : 'غير مكتمل',
             'items' => $items,
             'next_payment_date' => $remainingCents > 0 ? now()->addMonth()->toDateString() : null,

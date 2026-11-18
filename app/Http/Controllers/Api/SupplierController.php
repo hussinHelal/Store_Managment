@@ -6,16 +6,51 @@ use App\Http\Requests\Api\CreateSupplierRequest;
 use App\Http\Requests\Api\DeleteSupplierRequest;
 use App\Http\Requests\Api\SupplierIndexRequest;
 use App\Http\Requests\Api\UpdateSupplierRequest;
+use App\Http\Requests\StorePurchaseReceiptRequest;
+use App\Http\Requests\SupplierStatementRequest;
+use App\Http\Resources\Api\PurchaseReceiptResource;
 use App\Http\Resources\Api\SupplierResource;
+use App\Models\products;
 use App\Models\Supplier;
 use App\Services\ApiIdempotencyService;
+use App\Services\PurchaseReceivingService;
 use App\Services\SupplierDeletionService;
+use App\Services\SupplierStatementService;
+use App\Support\Money;
+use App\Support\ProductCostSchema;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class SupplierController
 {
+    public function receiptProducts(Request $request): JsonResponse
+    {
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'between:1,100'],
+        ]);
+        $term = trim((string) ($filters['q'] ?? ''));
+        $columns = ['id', 'name', 'barcode', 'stock'];
+        if (ProductCostSchema::available()) {
+            $columns[] = 'cost_price';
+        }
+        $query = products::query()->select($columns)
+            ->when($term !== '', fn ($builder) => $builder->where(fn ($where) => $where
+                ->where('name', 'like', '%'.addcslashes($term, '%_\\').'%')
+                ->orWhere('barcode', 'like', '%'.addcslashes($term, '%_\\').'%')))
+            ->orderBy('name');
+
+        return response()->json($query->paginate($filters['per_page'] ?? 30)->through(fn (products $product) => [
+            'id' => $product->id,
+            'name' => $product->name,
+            'barcode' => $product->barcode,
+            'stock' => (int) $product->stock,
+            'cost_price' => $product->cost_price === null ? null : Money::decimal(Money::cents($product->cost_price)),
+        ]));
+    }
+
     public function index(SupplierIndexRequest $request): AnonymousResourceCollection
     {
         $filters = $request->validated();
@@ -40,6 +75,55 @@ class SupplierController
     public function show(Supplier $supplier): SupplierResource
     {
         return new SupplierResource($supplier->loadCount('purchases'));
+    }
+
+    public function statement(SupplierStatementRequest $request, Supplier $supplier, SupplierStatementService $statements): JsonResponse
+    {
+        $filters = $request->validated();
+        $statement = $statements->statement($supplier, $filters);
+        $money = static fn (int $cents): string => Money::decimal($cents);
+
+        return response()->json(['data' => [
+            'supplier' => (new SupplierResource($supplier->loadCount('purchases')))->resolve($request),
+            'summary' => [
+                'opening_balance' => $money($statement['opening_balance']),
+                'recorded_balance' => $money($statement['recorded_balance']),
+                'unallocated_difference' => $money($statement['unallocated_difference']),
+                'aging' => array_map($money, $statement['aging']),
+            ],
+            'purchases' => $statement['purchases']->through(fn ($purchase) => [
+                'id' => $purchase->id,
+                'invoice_number' => $purchase->invoice_number,
+                'purchase_date' => $purchase->purchase_date?->toDateString(),
+                'total_amount' => Money::decimal(Money::cents($purchase->total_amount)),
+                'paid_amount' => Money::decimal(Money::cents($purchase->paid_amount)),
+                'remaining' => Money::decimal(Money::cents($purchase->remaining)),
+                'status' => $purchase->status,
+            ]),
+            'payments' => $statement['payments']->through(fn ($payment) => [
+                'id' => $payment->id,
+                'receipt_number' => $payment->receipt_number,
+                'payment_date' => $payment->payment_date?->toDateString(),
+                'purchase_id' => $payment->purchase_id,
+                'purchase_number' => $payment->purchase?->invoice_number,
+                'amount' => Money::decimal(Money::cents($payment->amount)),
+                'notes' => $payment->notes,
+            ]),
+        ]]);
+    }
+
+    public function receive(StorePurchaseReceiptRequest $request, Supplier $supplier, ApiIdempotencyService $idempotency, PurchaseReceivingService $receiving): JsonResponse
+    {
+        $data = $request->validated();
+        $key = $data['idempotency_key'];
+        unset($data['idempotency_key']);
+
+        return $idempotency->execute($request->user(), 'suppliers.receipts.create', $key, ['supplier_id' => $supplier->id] + $data,
+            function () use ($request, $supplier, $receiving, $data, $key): array {
+                $purchase = $receiving->receive($supplier, $data, $request->user(), $key);
+
+                return ['status' => 201, 'body' => ['data' => (new PurchaseReceiptResource($purchase))->resolve($request)]];
+            });
     }
 
     public function store(CreateSupplierRequest $request, ApiIdempotencyService $idempotency): JsonResponse

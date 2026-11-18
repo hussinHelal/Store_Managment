@@ -3,17 +3,17 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
-use App\Models\profile;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, HasRoles;
+    /** @use HasFactory<UserFactory> */
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * The "profile" model reads the SAME users table (it has no table of its own and no
@@ -24,6 +24,11 @@ class User extends Authenticatable
     public function profile()
     {
         return $this->hasOne(profile::class, 'id', 'id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     /** Role, is_active and system_account are never mass assignable; controllers use forceFill(). */
@@ -74,5 +79,4 @@ class User extends Authenticatable
     {
         return $this->role === 'cashier';
     }
-
 }

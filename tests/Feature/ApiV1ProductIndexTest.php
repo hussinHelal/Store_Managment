@@ -122,6 +122,7 @@ class ApiV1ProductIndexTest extends TestCase
         $payload = [
             'name' => 'New phone',
             'price' => '199.50',
+            'cost_price' => '90.00',
             'description' => null,
             'barcode' => null,
             'stock' => 8,
@@ -132,6 +133,7 @@ class ApiV1ProductIndexTest extends TestCase
             ->postJson('/api/v1/products', $payload)
             ->assertCreated()
             ->assertJsonPath('data.name', 'New phone')
+            ->assertJsonPath('data.cost_price', '90.00')
             ->assertJsonPath('data.price', '199.50');
 
         $this->withToken($token->plainTextToken)
@@ -143,7 +145,7 @@ class ApiV1ProductIndexTest extends TestCase
         $this->assertSame(1, products::query()->count());
     }
 
-    public function test_product_manager_can_update_and_delete_only_products_without_history(): void
+    public function test_product_manager_cannot_delete_product_after_stock_history_is_recorded(): void
     {
         $user = User::factory()->create(['is_active' => true]);
         $permission = Permission::query()->create(['name' => 'page.products.manage', 'guard_name' => 'web']);
@@ -176,9 +178,10 @@ class ApiV1ProductIndexTest extends TestCase
         $this->withToken($token)
             ->withHeader('Idempotency-Key', (string) Str::uuid())
             ->deleteJson('/api/v1/products/'.$product->id)
-            ->assertNoContent();
+            ->assertUnprocessable();
 
-        $this->assertDatabaseMissing('products', ['id' => $product->id]);
+        $this->assertDatabaseHas('products', ['id' => $product->id]);
+        $this->assertDatabaseHas('stock_movements', ['product_id' => $product->id]);
     }
 
     private function userWithProductViewPermission(): User

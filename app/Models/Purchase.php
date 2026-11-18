@@ -10,6 +10,9 @@ class Purchase extends Model
 {
     protected $fillable = [
         'supplier_id',
+        'branch_id',
+        'idempotency_key',
+        'payload_hash',
         'invoice_number',
         'purchase_date',
         'payment_type',
@@ -35,6 +38,16 @@ class Purchase extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(SupplierPayment::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(PurchaseItem::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function statusLabel(): string

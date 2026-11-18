@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Maintenance;
 use App\Http\Requests\SaveMaintenanceRequest;
+use App\Models\Maintenance;
 use App\Services\PictureStorageService;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class MaintenanceController extends Controller
@@ -17,9 +17,9 @@ class MaintenanceController extends Controller
     public function index(Request $request)
     {
         $maintenances = Maintenance::when($request->filled('search'), function ($query) use ($request) {
-                $search = '%' . $request->input('search') . '%';
-                $query->where('name', 'like', $search);
-            })
+            $search = '%'.$request->input('search').'%';
+            $query->where('name', 'like', $search);
+        })
             ->orderBy('id', 'desc')
             ->paginate(20)
             ->withQueryString();
@@ -126,7 +126,7 @@ class MaintenanceController extends Controller
     public function repaired(Request $request, Maintenance $maintenance)
     {
         $validated = $request->validate([
-            'status' => ['required', Rule::in(['مكتمل', 'مرفوض'])],
+            'status' => ['required', Rule::in(['قيد الانتظار', 'مكتمل', 'مرفوض'])],
         ]);
 
         $maintenance->update([

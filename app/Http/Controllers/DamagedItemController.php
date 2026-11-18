@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SaveDamagedItemRequest;
+use App\Models\BranchStock;
 use App\Models\DamagedItem;
 use App\Models\products;
+use App\Services\CurrentBranch;
 use App\Services\DamagedStockService;
 use App\Services\PictureStorageService;
+use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -161,12 +164,20 @@ class DamagedItemController extends Controller
     }
 
     /** Product lookup for the form: by name or barcode, small result set. */
-    public function searchProducts(Request $request, PictureStorageService $pictures): JsonResponse
+    public function searchProducts(Request $request, PictureStorageService $pictures, CurrentBranch $currentBranch): JsonResponse
     {
         $validated = $request->validate(['q' => ['nullable', 'string', 'max:100']]);
         $term = trim((string) ($validated['q'] ?? ''));
 
-        $query = products::query()->select(['id', 'name', 'price', 'barcode', 'stock', 'image']);
+        $branchId = $currentBranch->id($request->user());
+        $stockService = app(StockService::class);
+        products::query()->whereDoesntHave('branchStocks')->pluck('id')->each(
+            fn ($productId) => $stockService->initializeBranch((int) $productId, $branchId)
+        );
+        $query = products::query()->select(['id', 'name', 'price', 'barcode', 'image'])
+            ->addSelect(['branch_stock_quantity' => BranchStock::query()->select('quantity')
+                ->whereColumn('product_id', 'products.id')->where('branch_id', $branchId)->limit(1)])
+            ->whereHas('branchStocks', fn ($stock) => $stock->where('branch_id', $branchId)->where('quantity', '>', 0));
 
         if ($term !== '') {
             foreach (array_slice(preg_split('/\s+/u', $term, -1, PREG_SPLIT_NO_EMPTY) ?: [], 0, 5) as $word) {
@@ -184,7 +195,7 @@ class DamagedItemController extends Controller
                 'id' => $product->id,
                 'name' => $product->name,
                 'barcode' => $product->barcode,
-                'stock' => (int) $product->stock,
+                'stock' => (int) ($product->branch_stock_quantity ?? 0),
                 'price' => number_format((float) $product->price, 2, '.', ''),
                 'image_url' => $pictures->productUrl($product, true),
             ])->values();

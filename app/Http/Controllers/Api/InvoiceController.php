@@ -4,19 +4,23 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\Api\CreateInvoiceRequest;
 use App\Http\Requests\Api\InvoiceIndexRequest;
-use App\Http\Resources\Api\InvoiceResource;
 use App\Http\Requests\Api\PayInvoiceRequest;
 use App\Http\Requests\Api\RefundInvoiceRequest;
 use App\Http\Requests\Api\UpdateInvoiceRequest;
+use App\Http\Resources\Api\InvoiceResource;
 use App\Models\AppNotification;
 use App\Models\invoice;
 use App\Services\ApiIdempotencyService;
 use App\Services\InvoiceCreationService;
 use App\Services\InvoiceInstallmentSync;
+use App\Support\Money;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
+use Mpdf\Mpdf;
+use Mpdf\Output\Destination;
 use Symfony\Component\HttpFoundation\Response;
 
 class InvoiceController
@@ -49,12 +53,12 @@ class InvoiceController
 
     public function pdf(invoice $invoice): Response
     {
-        abort_unless(class_exists(\Mpdf\Mpdf::class), 501, 'PDF generation is unavailable.');
+        abort_unless(class_exists(Mpdf::class), 501, 'PDF generation is unavailable.');
         $invoice->loadMissing('product');
         $html = view('invoice.pdf', compact('invoice'))->render();
         $temporaryDirectory = storage_path('app/mpdf-temp');
-        \Illuminate\Support\Facades\File::ensureDirectoryExists($temporaryDirectory);
-        $pdf = new \Mpdf\Mpdf([
+        File::ensureDirectoryExists($temporaryDirectory);
+        $pdf = new Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',
             'tempDir' => $temporaryDirectory,
@@ -63,7 +67,7 @@ class InvoiceController
             'default_font' => 'dejavusans',
         ]);
         $pdf->WriteHTML($html);
-        $contents = $pdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
+        $contents = $pdf->Output('', Destination::STRING_RETURN);
 
         return response($contents, 200, [
             'Content-Type' => 'application/pdf',
@@ -92,8 +96,7 @@ class InvoiceController
                 $invoice = $invoices->create(
                     $data,
                     (int) $request->user()->id,
-                    fn (invoice $invoice, array $items, float $total, float $paid) =>
-                        $installments->sync($invoice, $items, $total, $paid)
+                    fn (invoice $invoice, array $items, string $total, string $paid) => $installments->sync($invoice, $items, $total, $paid)
                 );
 
                 return [
@@ -125,8 +128,7 @@ class InvoiceController
                     $invoice,
                     $data,
                     (int) $request->user()->id,
-                    fn (invoice $locked, array $items, float $total, float $paid) =>
-                        $installments->sync($locked, $items, $total, $paid)
+                    fn (invoice $locked, array $items, string $total, string $paid) => $installments->sync($locked, $items, $total, $paid)
                 );
 
                 return ['status' => 200, 'body' => ['data' => (new InvoiceResource($updated))->resolve($request)]];
@@ -156,15 +158,15 @@ class InvoiceController
                         throw ValidationException::withMessages(['invoice' => 'لا يمكن تسجيل دفعة على فاتورة مستردة.']);
                     }
 
-                    $totalCents = (int) round((float) $locked->total_amount * 100);
-                    $paidCents = (int) round((float) $locked->paid_amount * 100);
+                    $totalCents = Money::cents($locked->total_amount);
+                    $paidCents = Money::cents($locked->paid_amount);
                     $remainingCents = max(0, $totalCents - $paidCents);
                     if ($remainingCents === 0) {
                         throw ValidationException::withMessages(['amount' => 'الفاتورة مدفوعة بالكامل بالفعل.']);
                     }
 
                     $paymentCents = isset($data['amount']) && $data['amount'] !== ''
-                        ? (int) round((float) $data['amount'] * 100)
+                        ? Money::cents($data['amount'])
                         : $remainingCents;
                     if ($paymentCents <= 0 || $paymentCents > $remainingCents) {
                         throw ValidationException::withMessages(['amount' => 'لا يمكن أن تتجاوز الدفعة إجمالي المبلغ المتبقي.']);
@@ -172,15 +174,15 @@ class InvoiceController
 
                     $paidCents += $paymentCents;
                     $locked->update([
-                        'paid_amount' => number_format($paidCents / 100, 2, '.', ''),
+                        'paid_amount' => Money::decimal($paidCents),
                         'status' => $paidCents >= $totalCents ? 'paid' : 'unpaid',
                     ]);
                     $items = is_array($locked->items) ? $locked->items : [];
-                    $installments->sync($locked, $items, $totalCents / 100, $paidCents / 100);
+                    $installments->sync($locked, $items, Money::decimal($totalCents), Money::decimal($paidCents));
 
                     AppNotification::query()->create([
                         'title' => 'تم استلام دفعة فاتورة',
-                        'message' => 'تم استلام دفعة بمبلغ '.number_format($paymentCents / 100, 2, '.', '').' على الفاتورة #'.$locked->invoice_number,
+                        'message' => 'تم استلام دفعة بمبلغ '.Money::decimal($paymentCents).' على الفاتورة #'.$locked->invoice_number,
                         'is_active' => true,
                         'created_by' => $request->user()->id,
                     ]);

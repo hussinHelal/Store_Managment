@@ -106,6 +106,25 @@ class InstallmentPaymentTest extends TestCase
             ->assertSee('class="form-control product-search"', false);
     }
 
+    public function test_installment_can_be_created_with_manual_product_name_and_unit_price(): void
+    {
+        $this->actingAs($this->admin, 'web')->post(route('installments.store'), [
+            'customer' => 'عميل يدوي',
+            'product_ids' => [''],
+            'product_names' => ['قطعة غير مسجلة'],
+            'unit_prices' => ['12.50'],
+            'quantities' => ['2'],
+            'paid_amount' => '5.00',
+        ])->assertRedirect(route('installments.index'));
+
+        $installment = installments::query()->firstOrFail();
+        $this->assertNull($installment->product_id);
+        $this->assertSame('قطعة غير مسجلة', $installment->product_name);
+        $this->assertSame('25.00', $installment->product_price);
+        $this->assertSame('20.00', $installment->remaining);
+        $this->assertSame('12.50', $installment->items[0]['price']);
+    }
+
     public function test_create_and_update_reject_overpayments_and_mismatched_item_arrays(): void
     {
         $productId = DB::table('products')->insertGetId([

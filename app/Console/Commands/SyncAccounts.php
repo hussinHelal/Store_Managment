@@ -20,8 +20,8 @@ class SyncAccounts extends Command
 
     public function handle(): int
     {
-        if (!Schema::hasTable('users') || !Schema::hasColumn('users', 'username')
-            || !Schema::hasColumn('users', 'system_account')) {
+        if (! Schema::hasTable('users') || ! Schema::hasColumn('users', 'username')
+            || ! Schema::hasColumn('users', 'system_account')) {
             $this->error('User account columns are missing. Run the database migrations first.');
 
             return self::FAILURE;
@@ -41,7 +41,7 @@ class SyncAccounts extends Command
                 return self::FAILURE;
             }
 
-            if (!preg_match('/^[A-Za-z0-9._-]{3,80}$/', $username)) {
+            if (! preg_match('/^[A-Za-z0-9._-]{3,80}$/', $username)) {
                 $this->error("{$type} username must be 3-80 characters using letters, numbers, dots, underscores, or hyphens.");
 
                 return self::FAILURE;
@@ -71,6 +71,12 @@ class SyncAccounts extends Command
                             'guard_name' => 'web',
                         ]);
                     }
+                }
+                foreach (config('access.extra_permissions', []) as $name) {
+                    $pagePermissions[] = Permission::firstOrCreate([
+                        'name' => $name,
+                        'guard_name' => 'web',
+                    ]);
                 }
 
                 $adminRole = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
@@ -109,8 +115,8 @@ class SyncAccounts extends Command
             throw new \RuntimeException("The configured {$type} username is already assigned to another account.");
         }
 
-        $user ??= new User();
-        $passwordChanged = !$user->exists || !Hash::check($config['password'], $user->getAuthPassword());
+        $user ??= new User;
+        $passwordChanged = ! $user->exists || ! Hash::check($config['password'], $user->getAuthPassword());
 
         $user->forceFill([
             'username' => $username,

@@ -12,6 +12,10 @@
     </a>
 </div>
 
+@unless($supportsCostPrice)
+    <div class="alert alert-warning" role="status">تكلفة المنتج غير متاحة حالياً لأن قاعدة البيانات لم تُحدّث بعد. لن تُحفظ تكلفة المنتج حتى تطبيق التحديثات المعتمدة.</div>
+@endunless
+
 <div class="row gx-3 gy-3 mb-4">
     <div class="col-12 col-md-6 col-xl-4">
         <div class="card border-0 shadow-sm bg-body p-3">
@@ -32,6 +36,7 @@
           <th scope="col">#</th>
           <th scope="col">الاسم</th>
           <th scope="col">السعر</th>
+          @can('page.products.manage')<th scope="col">تكلفة الوحدة</th>@endcan
           <th scope="col">الوصف</th>
           <th scope="col">ملاحظات</th>
           <th scope="col">الصنف</th>
@@ -47,6 +52,17 @@
           <th scope="row">{{ $product->id }}</th>
           <td>{{ $product->name }}</td>
           <td>{{ $product->price }}</td>
+          @can('page.products.manage')
+          <td>
+              @if(!$supportsCostPrice)
+                  <span class="badge text-bg-warning">يلزم تحديث قاعدة البيانات</span>
+              @elseif($product->cost_price === null || \App\Support\Money::cents($product->cost_price) === 0)
+                  <span class="badge text-bg-warning">التكلفة غير محددة</span>
+              @else
+                  {{ \App\Support\Money::decimal(\App\Support\Money::cents($product->cost_price)) }} ج.م
+              @endif
+          </td>
+          @endcan
           <td>{{ $product->description }}</td>
           <td>{{ $product->notes ?: '—' }}</td>
           <td>{{ $product->category?->name ?? 'لا يوجد' }}</td>
@@ -71,7 +87,7 @@
         </tr>
         @empty
         <tr>
-            <td colspan="10" class="text-center">لا توجد منتجات.</td>
+            <td colspan="{{ auth()->user()->can('page.products.manage') ? 11 : 10 }}" class="text-center">لا توجد منتجات.</td>
         </tr>
         @endforelse
       </tbody>

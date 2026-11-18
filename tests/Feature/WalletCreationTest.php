@@ -59,8 +59,8 @@ class WalletCreationTest extends TestCase
         $this->assertNull($wallet->provider);
         $this->assertNull($wallet->identifier);
         $this->assertSame(80, $wallet->warn_at_percent);
-        $this->assertSame('0.00', $wallet->default_commission_percent);
-        $this->assertSame('0.00', $wallet->balance);
+        $this->assertEquals(0, $wallet->default_commission_percent);
+        $this->assertEquals(0, $wallet->balance);
     }
 
     public function test_wallet_balance_cannot_be_changed_through_metadata_edit(): void
@@ -78,7 +78,7 @@ class WalletCreationTest extends TestCase
             ->put(route('wallets.update', $wallet), ['is_active' => '1', 'balance' => '175'])
             ->assertSessionHasErrors('balance');
 
-        $this->assertSame('100.00', $wallet->fresh()->balance);
+        $this->assertEquals(100, $wallet->fresh()->balance);
         $this->assertDatabaseMissing('wallet_transactions', ['wallet_id' => $wallet->id, 'type' => 'adjustment']);
     }
 
@@ -97,10 +97,10 @@ class WalletCreationTest extends TestCase
             ->post(route('wallets.adjust', $wallet), ['amount' => '75', 'reason' => 'Provider balance correction'])
             ->assertRedirect();
 
-        $this->assertSame('175.00', $wallet->fresh()->balance);
+        $this->assertEquals(175, $wallet->fresh()->balance);
         $adjustment = WalletTransaction::query()->where('wallet_id', $wallet->id)->firstOrFail();
         $this->assertSame('adjustment', $adjustment->type);
-        $this->assertSame('75.00', $adjustment->wallet_delta);
+        $this->assertEquals(75, $adjustment->wallet_delta);
         $this->assertSame('Provider balance correction', $adjustment->notes);
     }
 
@@ -119,8 +119,9 @@ class WalletCreationTest extends TestCase
             ->post(route('wallets.adjust', $wallet), ['amount' => '75'])
             ->assertSessionHasErrors('reason');
 
-        $this->assertSame('100.00', $wallet->fresh()->balance);
+        $this->assertEquals(100, $wallet->fresh()->balance);
     }
+
     private function createSuperadmin(): User
     {
         config([

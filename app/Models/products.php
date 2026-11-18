@@ -2,16 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use App\Models\category;
-use App\Models\invoice;
-use App\Models\sales;
-use App\Models\installments;
 use App\Services\PictureStorageService;
+use Illuminate\Database\Eloquent\Model;
 
 class products extends Model
 {
-    protected $fillable = ['name', 'price', 'description', 'notes', 'barcode', 'stock', 'category_id', 'image'];
+    protected $fillable = ['name', 'price', 'cost_price', 'description', 'notes', 'barcode', 'stock', 'category_id', 'image'];
+
+    protected $casts = ['cost_price' => 'decimal:2'];
 
     public function getImageUrlAttribute(): ?string
     {
@@ -37,8 +35,9 @@ class products extends Model
     {
         return $this->hasMany(invoice::class, 'product_id');
     }
+
+    public function branchStocks()
+    {
+        return $this->hasMany(BranchStock::class, 'product_id');
+    }
 }
-
-
-
-

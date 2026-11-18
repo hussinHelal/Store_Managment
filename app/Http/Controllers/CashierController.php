@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CashierCheckoutRequest;
+use App\Models\BranchStock;
 use App\Models\invoice;
 use App\Models\products;
+use App\Services\CurrentBranch;
 use App\Services\InvoiceCreationService;
 use App\Services\InvoiceInstallmentSync;
 use App\Services\PictureStorageService;
+use App\Services\StockService;
+use App\Support\Money;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,9 +41,7 @@ class CashierController extends Controller
     /** Folder name PictureStorageService uses for old-style product pictures. */
     private const PRODUCT_PICTURE_FOLDER = 'products';
 
-    public function __construct(private readonly PictureStorageService $pictures)
-    {
-    }
+    public function __construct(private readonly PictureStorageService $pictures) {}
 
     public function index(): View
     {
@@ -49,26 +51,33 @@ class CashierController extends Controller
     /**
      * JSON product lookup by name or barcode (small result set, never the full table).
      */
-    public function search(Request $request): JsonResponse
+    public function search(Request $request, CurrentBranch $currentBranch): JsonResponse
     {
         $validated = $request->validate(['q' => ['nullable', 'string', 'max:100']]);
         $term = trim((string) ($validated['q'] ?? ''));
+        $branchId = $currentBranch->id($request->user());
+        $stockService = app(StockService::class);
+        products::query()->whereDoesntHave('branchStocks')->pluck('id')->each(
+            fn ($productId) => $stockService->initializeBranch((int) $productId, $branchId)
+        );
+        $available = fn ($query) => $query->addSelect(['branch_stock_quantity' => BranchStock::query()
+            ->select('quantity')->whereColumn('product_id', 'products.id')->where('branch_id', $branchId)->limit(1)]);
 
         // No query: show best sellers that are in stock, for one-tap selling.
         if ($term === '') {
-            $items = products::query()
-                ->where('stock', '>', 0)
+            $items = $available(products::query())
+                ->whereHas('branchStocks', fn ($stock) => $stock->where('branch_id', $branchId)->where('quantity', '>', 0))
                 ->orderByDesc('total_sold')
                 ->orderBy('name')
                 ->limit(self::TOP_SELLERS_LIMIT)
-                ->get(['id', 'name', 'price', 'barcode', 'stock', 'image']);
+                ->get(['id', 'name', 'price', 'barcode', 'image']);
 
             return $this->searchResponse($items, false);
         }
 
         // Exact barcode match (a scanner types the code and presses Enter).
-        $exact = products::query()->where('barcode', $term)
-            ->first(['id', 'name', 'price', 'barcode', 'stock', 'image']);
+        $exact = $available(products::query())->where('barcode', $term)
+            ->first(['id', 'name', 'price', 'barcode', 'image']);
 
         if ($exact) {
             return $this->searchResponse(collect([$exact]), true);
@@ -76,7 +85,7 @@ class CashierController extends Controller
 
         // Every word must match the name or the barcode, in any order.
         $words = array_slice(preg_split('/\s+/u', $term, -1, PREG_SPLIT_NO_EMPTY) ?: [], 0, 5);
-        $query = products::query();
+        $query = $available(products::query());
 
         foreach ($words as $word) {
             $like = '%'.$this->escapeLike($word).'%';
@@ -85,9 +94,9 @@ class CashierController extends Controller
 
         // Rank: names starting with the query first, then in-stock before out-of-stock.
         $items = $query
-            ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END, stock = 0, name', [$this->escapeLike($term).'%'])
+            ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END, name', [$this->escapeLike($term).'%'])
             ->limit(self::SEARCH_LIMIT)
-            ->get(['id', 'name', 'price', 'barcode', 'stock', 'image']);
+            ->get(['id', 'name', 'price', 'barcode', 'image']);
 
         return $this->searchResponse($items, false);
     }
@@ -119,12 +128,12 @@ class CashierController extends Controller
 
         $totalCents = 0;
         foreach ($lines as $productId => $quantity) {
-            $totalCents += (int) round(((float) $prices[$productId]) * 100) * $quantity;
+            $totalCents += Money::cents($prices[$productId]) * $quantity;
         }
 
         // Empty "received" means exact full payment. Overpayment becomes change.
         $receivedCents = isset($data['received'])
-            ? (int) round(((float) $data['received']) * 100)
+            ? Money::cents($data['received'])
             : $totalCents;
         $paidCents = min($receivedCents, $totalCents);
 
@@ -164,8 +173,7 @@ class CashierController extends Controller
                     'paid_amount' => $this->money($paidCents),
                 ],
                 $userId,
-                fn (invoice $invoice, array $items, float $total, float $paid) =>
-                    $installments->sync($invoice, $items, $total, $paid)
+                fn (invoice $invoice, array $items, string $total, string $paid) => $installments->sync($invoice, $items, $total, $paid)
             );
         } catch (ValidationException $exception) {
             Cache::forget($cacheKey); // let the cashier fix the cart and retry
@@ -177,8 +185,8 @@ class CashierController extends Controller
             return $this->fail('تعذر إتمام العملية ولم يتم حفظ أي شيء. حاول مرة أخرى.', 500);
         }
 
-        $invoiceTotalCents = (int) round(((float) $invoice->total_amount) * 100);
-        $invoicePaidCents = (int) round(((float) $invoice->paid_amount) * 100);
+        $invoiceTotalCents = Money::cents($invoice->total_amount);
+        $invoicePaidCents = Money::cents($invoice->paid_amount);
 
         $response = [
             'ok' => true,
@@ -205,7 +213,7 @@ class CashierController extends Controller
                 'name' => $product->name,
                 'price' => $this->money((int) round(((float) $product->price) * 100)),
                 'barcode' => $product->barcode,
-                'stock' => (int) $product->stock,
+                'stock' => (int) ($product->branch_stock_quantity ?? 0),
                 'image_url' => $this->pictures->productUrl($product, true),
             ])->values(),
         ]);
@@ -246,7 +254,7 @@ class CashierController extends Controller
 
     private function money(int $cents): string
     {
-        return number_format($cents / 100, 2, '.', '');
+        return Money::decimal($cents);
     }
 
     private function fail(string $message, int $status, array $errors = []): JsonResponse

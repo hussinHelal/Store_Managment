@@ -104,6 +104,10 @@
                 </div>
                 <div class="modal-body">
                     <video id="cameraScanVideo" class="w-100 rounded bg-dark" playsinline></video>
+                    <form id="cameraManualForm" class="mt-3">
+                        <label for="cameraManualBarcode" class="form-label">أدخل الباركود يدويًا أو استخدم قارئ متصل</label>
+                        <div class="input-group"><input id="cameraManualBarcode" class="form-control" autocomplete="off" placeholder="مسح الباركود هنا"><button class="btn btn-outline-primary" type="submit">بحث</button></div>
+                    </form>
                     <p id="cameraScanStatus" class="small text-body-secondary mt-2 mb-0" role="status" aria-live="polite">اسمح باستخدام الكاميرا لبدء المسح.</p>
                 </div>
                 <div class="modal-footer">
@@ -141,6 +145,7 @@
     const cameraModal = $('cameraScanModal');
     const cameraVideo = $('cameraScanVideo');
     const cameraStatus = $('cameraScanStatus');
+    const cameraManualForm = $('cameraManualForm'), cameraManualBarcode = $('cameraManualBarcode');
     let cameraSession = null;
 
     // ---------- helpers ----------
@@ -159,7 +164,7 @@
 
     const fmt = (cents) => (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const money = (cents) => fmt(cents) + ' ' + CFG.currency;
-    const toCents = (value) => Math.round(parseFloat(value) * 100);
+    const toCents = (value) => { const amount = Number.parseFloat(value); return Number.isFinite(amount) ? Math.round(amount * 100) : 0; };
 
     // "12,5" / "١٢٫٥" / "12.50" -> cents. Returns null when empty, NaN when invalid.
     function parseCents(raw) {
@@ -417,7 +422,7 @@
         const priceChanged = toCents(r.total) !== clientTotalCents;
 
         successBox.className = 'alert alert-success';
-        successBox.replaceChildren(
+        const successNodes = [
             el('div', { class: 'fw-bold fs-5 mb-2', text: 'تمت العملية بنجاح — فاتورة رقم ' + r.invoice_number }),
             row('الإجمالي', money(toCents(r.total))),
             row('المدفوع', money(toCents(r.paid))),
@@ -429,7 +434,9 @@
             }) : null,
             el('div', { class: 'd-flex gap-2 mt-3' },
                 el('a', { href: r.print_url, target: '_blank', rel: 'noopener', class: 'btn btn-primary', text: 'طباعة الفاتورة' }),
-                el('button', { type: 'button', class: 'btn btn-outline-secondary', text: 'عملية جديدة', onclick: newSale })));
+                el('button', { type: 'button', class: 'btn btn-outline-secondary', text: 'عملية جديدة', onclick: newSale }))
+        ].filter(Boolean);
+        successBox.replaceChildren(...successNodes);
         successBox.scrollIntoView({ block: 'nearest' });
     }
 
@@ -531,6 +538,16 @@
 
     checkoutBtn.addEventListener('click', checkout);
 
+    cameraManualForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const barcode = cameraManualBarcode.value.trim();
+        if (!barcode) { cameraManualBarcode.focus(); return; }
+        bootstrap.Modal.getOrCreateInstance(cameraModal).hide();
+        qInput.value = barcode;
+        qInput.focus();
+        runSearch(true);
+    });
+
     cameraModal.addEventListener('shown.bs.modal', () => {
         if (!window.createBarcodeScanner) {
             cameraStatus.textContent = 'تعذر تحميل قارئ الباركود. استخدم ماسح الباركود أو البحث اليدوي.';
@@ -545,8 +562,9 @@
             qInput.value = barcode;
             qInput.focus();
             runSearch(true);
-        }, () => {
-            cameraStatus.textContent = 'تعذر تشغيل الكاميرا. تحقق من الإذن واستخدم HTTPS أو البحث اليدوي.';
+        }, (error) => {
+            cameraStatus.textContent = error?.message || 'تعذر تشغيل الكاميرا. استخدم قارئ باركود متصل أو البحث اليدوي.';
+            cameraManualBarcode.focus();
         }, () => {
             cameraStatus.textContent = 'الكاميرا تعمل. قرّب الباركود من إطار الصورة.';
         });

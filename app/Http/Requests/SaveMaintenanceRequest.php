@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Support\PictureRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use App\Support\PictureRules;
 
 class SaveMaintenanceRequest extends FormRequest
 {
@@ -22,7 +22,7 @@ class SaveMaintenanceRequest extends FormRequest
             'owner' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'notes' => ['nullable', 'string', 'max:2000'],
-            'status' => ['required', 'string', Rule::in(['قيد الانتظار', 'مكتمل'])],
+            'status' => ['required', 'string', Rule::in(['قيد الانتظار', 'مكتمل', 'مرفوض'])],
             'phone' => ['required', 'string', 'max:32'],
             'address' => ['required', 'string', 'max:255'],
             'requested_date' => $this->isMethod('post')

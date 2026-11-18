@@ -24,10 +24,12 @@ class UpdateProductRequest extends ApiFormRequest
             'idempotency_key' => ['required', 'string', 'min:16', 'max:64', 'regex:/^[A-Za-z0-9-]+$/'],
             'name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:999999.99'],
+            'cost_price' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999.99'],
             'description' => ['nullable', 'string', 'max:2000'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'barcode' => ['nullable', 'string', 'max:255', Rule::unique('products', 'barcode')->ignore($product?->id)],
             'stock' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'stock_adjustment_reason' => ['nullable', 'string', 'max:500'],
             'category_id' => ['nullable', 'exists:categories,id'],
         ];
     }

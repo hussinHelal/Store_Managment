@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Branch;
+use App\Models\products;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class SupplierAccountsPayableTest extends TestCase
@@ -24,6 +27,108 @@ class SupplierAccountsPayableTest extends TestCase
             'accounts.admin.name' => 'Store Admin',
         ]);
         $this->artisan('app:sync-accounts')->assertExitCode(0);
+    }
+
+    public function test_supplier_statement_shows_aging_buckets_and_account_mismatch_warning(): void
+    {
+        $supplier = Supplier::create([
+            'name' => 'Statement supplier',
+            'opening_balance' => '10.00',
+            'balance' => '85.00',
+        ]);
+        $purchase = $supplier->purchases()->create([
+            'invoice_number' => 'STATEMENT-40',
+            'purchase_date' => now()->subDays(40)->toDateString(),
+            'payment_type' => 'credit',
+            'total_amount' => '75.00',
+            'paid_amount' => '0.00',
+            'remaining' => '75.00',
+            'status' => 'unpaid',
+        ]);
+        $admin = User::where('system_account', 'admin')->firstOrFail();
+
+        $this->actingAs($admin, 'web')->get(route('suppliers.statement', $supplier))
+            ->assertOk()
+            ->assertSee($purchase->invoice_number)
+            ->assertSee('75.00 ج.م')
+            ->assertDontSee('فرق غير موزع');
+    }
+
+    public function test_web_purchase_receipt_updates_branch_stock_and_preserves_manual_product_cost(): void
+    {
+        $supplier = Supplier::create(['name' => 'Receipt supplier', 'opening_balance' => '0.00', 'balance' => '0.00']);
+        $product = products::query()->create([
+            'name' => 'Receipt test phone', 'price' => '100.00', 'cost_price' => '60.00', 'description' => 'Test', 'stock' => 0,
+        ]);
+        $admin = User::where('system_account', 'admin')->firstOrFail();
+        $branch = Branch::query()->where('is_main', true)->firstOrFail();
+        $payload = [
+            'idempotency_key' => (string) Str::uuid(),
+            'branch_id' => $branch->id,
+            'purchase_date' => now()->toDateString(),
+            'payment_type' => 'credit',
+            'paid_amount' => '5.00',
+            'items' => [['product_id' => $product->id, 'quantity' => 2, 'unit_cost' => '12.50']],
+        ];
+
+        $this->actingAs($admin, 'web')->post(route('suppliers.receipts.store', $supplier), $payload)
+            ->assertRedirect(route('suppliers.show', $supplier));
+        $this->actingAs($admin, 'web')->post(route('suppliers.receipts.store', $supplier), $payload)
+            ->assertRedirect(route('suppliers.show', $supplier));
+
+        $this->assertSame('60.00', $product->fresh()->cost_price);
+        $this->assertSame(2, (int) $product->fresh()->stock);
+        $this->assertSame('20.00', $supplier->fresh()->balance);
+        $this->assertDatabaseCount('purchases', 1);
+        $this->assertDatabaseCount('purchase_items', 1);
+        $this->assertDatabaseHas('branch_stock', ['branch_id' => $branch->id, 'product_id' => $product->id, 'quantity' => 2]);
+    }
+
+    public function test_web_purchase_receipt_accepts_a_manually_named_item_without_stock_product(): void
+    {
+        $supplier = Supplier::create(['name' => 'Manual receipt supplier', 'opening_balance' => '0.00', 'balance' => '0.00']);
+        $admin = User::where('system_account', 'admin')->firstOrFail();
+        $branch = Branch::query()->where('is_main', true)->firstOrFail();
+        $payload = [
+            'idempotency_key' => (string) Str::uuid(),
+            'branch_id' => $branch->id,
+            'purchase_date' => now()->toDateString(),
+            'payment_type' => 'credit',
+            'paid_amount' => '0.00',
+            'items' => [['product_id' => '', 'product_name' => 'قطعة غيار يدوية', 'quantity' => 3, 'unit_cost' => '12.50']],
+        ];
+
+        $this->actingAs($admin, 'web')->post(route('suppliers.receipts.store', $supplier), $payload)
+            ->assertRedirect(route('suppliers.show', $supplier));
+
+        $this->assertDatabaseHas('purchase_items', [
+            'product_id' => null,
+            'product_name' => 'قطعة غيار يدوية',
+            'quantity' => 3,
+            'line_total' => '37.50',
+        ]);
+        $this->assertSame('37.50', $supplier->fresh()->balance);
+        $this->assertDatabaseMissing('branch_stock', ['branch_id' => $branch->id]);
+    }
+
+    public function test_supplier_payment_can_be_applied_to_one_purchase_invoice(): void
+    {
+        $supplier = Supplier::create(['name' => 'Targeted payment supplier', 'opening_balance' => '0.00', 'balance' => '0.00']);
+        $admin = User::where('system_account', 'admin')->firstOrFail();
+        $this->actingAs($admin, 'web')->post(route('suppliers.purchases.store', $supplier), [
+            'purchase_date' => now()->toDateString(), 'payment_type' => 'credit', 'total_amount' => '80.00', 'paid_amount' => '0.00',
+        ])->assertRedirect(route('suppliers.show', $supplier));
+        $purchase = $supplier->purchases()->firstOrFail();
+
+        $this->actingAs($admin, 'web')->post(route('suppliers.payments.store', $supplier), [
+            'purchase_id' => $purchase->id, 'amount' => '30.00', 'payment_date' => now()->toDateString(),
+        ])->assertRedirect(route('suppliers.show', $supplier));
+
+        $this->assertSame('50.00', $purchase->fresh()->remaining);
+        $this->assertSame('30.00', $purchase->fresh()->paid_amount);
+        $this->assertSame('partial', $purchase->fresh()->status);
+        $this->assertSame('50.00', $supplier->fresh()->balance);
+        $this->assertDatabaseHas('supplier_payments', ['purchase_id' => $purchase->id, 'amount' => '30.00']);
     }
 
     public function test_credit_purchase_and_payment_keep_supplier_balance_and_invoice_status_in_sync(): void

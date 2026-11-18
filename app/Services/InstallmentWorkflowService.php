@@ -16,7 +16,7 @@ class InstallmentWorkflowService
             if (! empty($validated['product_ids'])) {
                 [$items, $totalQuantity, $totalCents, $products] = $this->buildItems($validated);
                 $productName = collect($items)->pluck('name')->implode(', ');
-                $productId = $products->get($validated['product_ids'][0])->id;
+                $productId = $products->get($validated['product_ids'][0] ?? null)?->id;
             } else {
                 $totalCents = (int) round((float) $validated['total_amount'] * 100);
                 $totalQuantity = 1;
@@ -82,7 +82,7 @@ class InstallmentWorkflowService
 
             if (! empty($validated['product_ids'])) {
                 [$items, $quantity, $totalCents, $products] = $this->buildItems($validated);
-                $productId = $products->get($validated['product_ids'][0])->id;
+                $productId = $products->get($validated['product_ids'][0] ?? null)?->id;
                 $productName = collect($items)->pluck('name')->implode(', ');
             } else {
                 $totalCents = (int) round((float) $validated['total_amount'] * 100);
@@ -162,7 +162,7 @@ class InstallmentWorkflowService
     /** @return array{0:array<int, array<string, int|string>>,1:int,2:int,3:\Illuminate\Support\Collection<int, Product>} */
     public function buildItems(array $validated): array
     {
-        $productIds = array_values(array_unique($validated['product_ids']));
+        $productIds = array_values(array_unique(array_filter($validated['product_ids'])));
         $products = Product::query()->whereIn('id', $productIds)->orderBy('id')
             ->lockForUpdate()->get()->keyBy('id');
 
@@ -177,19 +177,27 @@ class InstallmentWorkflowService
         $totalCents = 0;
 
         foreach ($validated['product_ids'] as $index => $productId) {
-            $product = $products->get($productId);
+            $product = $productId ? $products->get($productId) : null;
             $quantity = (int) $validated['quantities'][$index];
-            $priceCents = (int) round((float) $product->price * 100);
+            $priceCents = (int) round((float) ($validated['unit_prices'][$index] ?? $product?->price ?? 0) * 100);
+            $name = trim((string) ($product?->name ?? $validated['product_names'][$index] ?? ''));
+            if ($name === '') {
+                throw ValidationException::withMessages(["product_names.$index" => 'اكتب اسم المنتج أو اختره من القائمة.']);
+            }
             $lineTotalCents = $priceCents * $quantity;
             $items[] = [
-                'product_id' => $product->id,
-                'name' => $product->name,
+                'product_id' => $product?->id,
+                'name' => $name,
                 'price' => number_format($priceCents / 100, 2, '.', ''),
                 'quantity' => $quantity,
                 'line_total' => number_format($lineTotalCents / 100, 2, '.', ''),
             ];
             $totalQuantity += $quantity;
             $totalCents += $lineTotalCents;
+        }
+
+        if ($totalCents <= 0) {
+            throw ValidationException::withMessages(['unit_prices' => 'يجب أن يكون إجمالي المنتجات أكبر من صفر.']);
         }
 
         return [$items, $totalQuantity, $totalCents, $products];

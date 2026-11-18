@@ -122,6 +122,18 @@ interface StoreApi {
         @Query("per_page") perPage: Int = 20,
     ): ApiPage<SoldProductDto>
 
+    @GET("v1/sales-reports")
+    suspend fun salesReport(
+        @Query("from") from: String,
+        @Query("to") to: String,
+        @Query("group_by") groupBy: String = "day",
+        @Query("branch_id") branchId: Long? = null,
+        @Query("cashier_id") cashierId: Long? = null,
+        @Query("category_id") categoryId: Long? = null,
+        @Query("product_id") productId: Long? = null,
+        @Query("payment_status") paymentStatus: String? = null,
+    ): ApiEnvelope<SalesReportDto>
+
     @GET("v1/cashier/products")
     suspend fun cashierProducts(@Query("q") query: String? = null): CashierSearchResponseDto
 
@@ -217,6 +229,19 @@ interface StoreApi {
         @Query("page") page: Int = 1,
         @Query("per_page") perPage: Int = 20,
     ): ApiPage<SupplierDto>
+
+    @GET("v1/suppliers/{supplier}/statement")
+    suspend fun supplierStatement(@Path("supplier") id: Long): ApiEnvelope<SupplierStatementDto>
+
+    @GET("v1/suppliers/receipt-products")
+    suspend fun supplierReceiptProducts(@Query("q") query: String? = null, @Query("per_page") perPage: Int = 30): ApiPage<SupplierReceiptProductDto>
+
+    @POST("v1/suppliers/{supplier}/receipts")
+    suspend fun createSupplierReceipt(
+        @Path("supplier") supplierId: Long,
+        @Header("Idempotency-Key") key: String,
+        @Body body: PurchaseReceiptInputDto,
+    ): ApiEnvelope<PurchaseReceiptDto>
 
     @POST("v1/suppliers")
     suspend fun createSupplier(
@@ -398,4 +423,31 @@ interface StoreApi {
         @Header("Idempotency-Key") key: String,
         @Body body: InvoiceInputDto,
     ): ApiEnvelope<InvoiceDto>
+
+    @GET("v1/devices")
+    suspend fun trackedDevices(@Query("q") query: String? = null, @Query("status") status: String? = null, @Query("page") page: Int = 1): ApiPage<TrackedDeviceDto>
+
+    @POST("v1/devices")
+    suspend fun createTrackedDevice(@Header("Idempotency-Key") key: String, @Body body: TrackedDeviceInputDto): ApiEnvelope<TrackedDeviceDto>
+
+    @PUT("v1/devices/{id}")
+    suspend fun updateTrackedDevice(@Path("id") id: Long, @Header("Idempotency-Key") key: String, @Body body: TrackedDeviceInputDto): ApiEnvelope<TrackedDeviceDto>
+
+    @DELETE("v1/devices/{id}")
+    suspend fun deleteTrackedDevice(@Path("id") id: Long, @Header("Idempotency-Key") key: String): Response<Unit>
+
+    @GET("v1/branch-stock")
+    suspend fun branchStock(
+        @Query("q") query: String? = null,
+        @Query("per_page") perPage: Int = 50,
+    ): ApiPage<BranchStockDto>
+
+    @GET("v1/stock-movements")
+    suspend fun stockMovements(@Query("per_page") perPage: Int = 50): ApiPage<StockMovementDto>
+
+    @POST("v1/stock-movements/adjust")
+    suspend fun adjustStock(
+        @Header("Idempotency-Key") key: String,
+        @Body body: StockAdjustmentInputDto,
+    ): StockAdjustmentResponseDto
 }

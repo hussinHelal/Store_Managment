@@ -25,6 +25,7 @@ data class CachedProduct(
     val imageUrl: String?,
     val serverUpdatedAt: String?,
     val cachedAtEpochMillis: Long,
+    val costPrice: String? = null,
 )
 
 @Entity(tableName = "cached_categories")
@@ -74,7 +75,7 @@ abstract class CatalogDao {
 
 @Database(
     entities = [CachedProduct::class, CachedCategory::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class CatalogDatabase : RoomDatabase() {

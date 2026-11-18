@@ -91,6 +91,7 @@ internal fun ProductEditDialog(
     }
     var name by rememberSaveable(product?.id) { mutableStateOf(product?.name.orEmpty()) }
     var price by rememberSaveable(product?.id) { mutableStateOf(product?.price.orEmpty()) }
+    var costPrice by rememberSaveable(product?.id) { mutableStateOf(product?.costPrice.orEmpty()) }
     var description by rememberSaveable(product?.id) { mutableStateOf(product?.description.orEmpty()) }
     var notes by rememberSaveable(product?.id) { mutableStateOf(product?.notes.orEmpty()) }
     var barcode by rememberSaveable(product?.id) { mutableStateOf(product?.barcode.orEmpty()) }
@@ -104,12 +105,13 @@ internal fun ProductEditDialog(
     fun payload(
         nextName: String = name,
         nextPrice: String = price,
+        nextCostPrice: String = costPrice,
         nextDescription: String = description,
         nextNotes: String = notes,
         nextBarcode: String = barcode,
         nextStock: String = stock,
         nextCategoryId: Long? = categoryId,
-    ) = listOf(nextName, nextPrice, nextDescription, nextNotes, nextBarcode, nextStock, nextCategoryId).joinToString("\u0000")
+    ) = listOf(nextName, nextPrice, nextCostPrice, nextDescription, nextNotes, nextBarcode, nextStock, nextCategoryId).joinToString("\u0000")
 
     fun updatePayload(nextPayload: String) {
         if (attemptedPayload != null && attemptedPayload != nextPayload) {
@@ -150,6 +152,15 @@ internal fun ProductEditDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                OutlinedTextField(
+                    costPrice,
+                    { value -> val normalized = value.normalizeArabicDigits(); updatePayload(payload(nextCostPrice = normalized)); costPrice = normalized },
+                    label = { Text("تكلفة الوحدة (اختيارية)") },
+                    supportingText = { Text("لا تتغير تكلفة المنتج عند تسجيل فاتورة شراء.") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 OutlinedTextField(description, { updatePayload(payload(nextDescription = it)); description = it }, label = { Text("الوصف (اختياري)") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(notes, { updatePayload(payload(nextNotes = it)); notes = it }, label = { Text("ملاحظات (اختياري)") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(
@@ -185,13 +196,15 @@ internal fun ProductEditDialog(
         confirmButton = {
             Button(enabled = !LocalIsSaving.current, onClick = {
                 val normalizedPrice = price.normalizeArabicDigits()
+                val normalizedCostPrice = costPrice.normalizeArabicDigits().ifBlank { null }
                 val validPrice = normalizedPrice.toBigDecimalOrNull()?.let { it > java.math.BigDecimal.ZERO && it.scale().coerceAtMost(2) == it.scale() } == true
-                if (name.isBlank() || !validPrice || stock.toIntOrNull() == null) {
+                val validCostPrice = normalizedCostPrice == null || normalizedCostPrice.toBigDecimalOrNull()?.let { it >= java.math.BigDecimal.ZERO && it.scale().coerceAtMost(2) == it.scale() } == true
+                if (name.isBlank() || !validPrice || !validCostPrice || stock.toIntOrNull() == null) {
                     validationError = "أدخل الاسم وسعراً صحيحاً وكمية مخزون صالحة."
                 } else {
                     validationError = null
                     attemptedPayload = payload()
-                    onSave(product?.id, ProductInputDto(name = name.trim(), price = normalizedPrice, description = description.trim().ifBlank { null }, notes = notes.trim().ifBlank { null }, barcode = barcode.trim().ifBlank { null }, stock = stock.toInt(), categoryId = categoryId), requestKey, selectedImage)
+                    onSave(product?.id, ProductInputDto(name = name.trim(), price = normalizedPrice, description = description.trim().ifBlank { null }, notes = notes.trim().ifBlank { null }, barcode = barcode.trim().ifBlank { null }, stock = stock.toInt(), categoryId = categoryId, costPrice = normalizedCostPrice), requestKey, selectedImage)
                 }
             }) { Text(if (product == null) "حفظ المنتج" else "حفظ التعديلات") }
         },

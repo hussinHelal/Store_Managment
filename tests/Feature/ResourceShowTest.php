@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Models\Maintenance;
-use App\Models\User;
 use App\Models\category;
 use App\Models\customers;
-use App\Models\invoice;
 use App\Models\installments;
+use App\Models\invoice;
+use App\Models\Maintenance;
 use App\Models\products;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

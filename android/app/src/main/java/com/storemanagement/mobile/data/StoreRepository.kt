@@ -7,6 +7,11 @@ import com.storemanagement.mobile.core.network.ApiCallExecutor
 import com.storemanagement.mobile.core.network.ApiEnvelope
 import com.storemanagement.mobile.core.network.ApiPage
 import com.storemanagement.mobile.core.network.ApiResult
+import com.storemanagement.mobile.core.network.BranchStockDto
+import com.storemanagement.mobile.core.network.StockAdjustmentInputDto
+import com.storemanagement.mobile.core.network.StockMovementDto
+import com.storemanagement.mobile.core.network.TrackedDeviceDto
+import com.storemanagement.mobile.core.network.TrackedDeviceInputDto
 import com.storemanagement.mobile.core.network.CategoryDto
 import com.storemanagement.mobile.core.network.CategoryInputDto
 import com.storemanagement.mobile.core.network.CustomerDto
@@ -23,7 +28,12 @@ import com.storemanagement.mobile.core.network.ProductInputDto
 import com.storemanagement.mobile.core.network.StoreApi
 import com.storemanagement.mobile.core.network.SupplierDto
 import com.storemanagement.mobile.core.network.SupplierInputDto
+import com.storemanagement.mobile.core.network.SupplierStatementDto
+import com.storemanagement.mobile.core.network.SupplierReceiptProductDto
+import com.storemanagement.mobile.core.network.PurchaseReceiptInputDto
+import com.storemanagement.mobile.core.network.PurchaseReceiptDto
 import com.storemanagement.mobile.core.network.SoldProductDto
+import com.storemanagement.mobile.core.network.SalesReportDto
 import com.storemanagement.mobile.core.network.NotificationDto
 import com.storemanagement.mobile.core.network.MaintenanceDto
 import com.storemanagement.mobile.core.network.CashierSearchResponseDto
@@ -95,6 +105,26 @@ class StoreRepository @Inject constructor(
 
     suspend fun createDamagedItem(key: String, input: DamagedItemInputDto) = calls.execute {
         api.createDamagedItem(key, input)
+    }
+
+    suspend fun trackedDevices(query: String? = null, status: String? = null, page: Int = 1): ApiResult<ApiPage<TrackedDeviceDto>> = calls.execute {
+        api.trackedDevices(query, status, page)
+    }
+
+    suspend fun createTrackedDevice(key: String, input: TrackedDeviceInputDto) = calls.execute { api.createTrackedDevice(key, input) }
+    suspend fun updateTrackedDevice(id: Long, key: String, input: TrackedDeviceInputDto) = calls.execute { api.updateTrackedDevice(id, key, input) }
+    suspend fun deleteTrackedDevice(id: Long, key: String) = calls.execute { api.deleteTrackedDevice(id, key).requireSuccess() }
+
+    suspend fun branchStock(query: String? = null): ApiResult<ApiPage<BranchStockDto>> = calls.execute {
+        api.branchStock(query)
+    }
+
+    suspend fun stockMovements(): ApiResult<ApiPage<StockMovementDto>> = calls.execute {
+        api.stockMovements()
+    }
+
+    suspend fun adjustStock(key: String, input: StockAdjustmentInputDto) = calls.execute {
+        api.adjustStock(key, input)
     }
 
     suspend fun updateDamagedItem(id: Long, key: String, input: DamagedItemInputDto) = calls.execute {
@@ -200,6 +230,19 @@ class StoreRepository @Inject constructor(
     suspend fun sales(query: String? = null, page: Int = 1): ApiResult<ApiPage<SoldProductDto>> =
         calls.execute { api.sales(query = query, page = page) }
 
+    suspend fun salesReport(
+        from: String,
+        to: String,
+        groupBy: String,
+        branchId: Long? = null,
+        cashierId: Long? = null,
+        categoryId: Long? = null,
+        productId: Long? = null,
+        paymentStatus: String? = null,
+    ): ApiResult<SalesReportDto> = calls.execute {
+        api.salesReport(from, to, groupBy, branchId, cashierId, categoryId, productId, paymentStatus).data
+    }
+
     suspend fun cashierProducts(query: String?): ApiResult<CashierSearchResponseDto> =
         calls.execute { api.cashierProducts(query) }
 
@@ -263,6 +306,15 @@ class StoreRepository @Inject constructor(
 
     suspend fun supplierDetails(id: Long): ApiResult<SupplierDto> =
         calls.execute { api.supplier(id).data }
+
+    suspend fun supplierStatement(id: Long): ApiResult<SupplierStatementDto> =
+        calls.execute { api.supplierStatement(id).data }
+
+    suspend fun supplierReceiptProducts(query: String? = null): ApiResult<ApiPage<SupplierReceiptProductDto>> =
+        calls.execute { api.supplierReceiptProducts(query) }
+
+    suspend fun createSupplierReceipt(id: Long, key: String, input: PurchaseReceiptInputDto): ApiResult<ApiEnvelope<PurchaseReceiptDto>> =
+        calls.execute { api.createSupplierReceipt(id, key, input) }
 
     suspend fun installments(query: String? = null, page: Int = 1): ApiResult<ApiPage<InstallmentDto>> =
         calls.execute { api.installments(query = query, page = page) }
@@ -389,6 +441,7 @@ class StoreRepository @Inject constructor(
         imageUrl = imageUrl,
         serverUpdatedAt = updatedAt,
         cachedAtEpochMillis = now,
+        costPrice = costPrice,
     )
 
     private fun CategoryDto.toCached(now: Long) = CachedCategory(

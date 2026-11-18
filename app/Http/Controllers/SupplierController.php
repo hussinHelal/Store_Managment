@@ -4,11 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SavePurchaseRequest;
 use App\Http\Requests\SaveSupplierRequest;
+use App\Http\Requests\StorePurchaseReceiptRequest;
 use App\Http\Requests\StoreSupplierPaymentRequest;
+use App\Http\Requests\SupplierStatementRequest;
+use App\Models\Branch;
+use App\Models\products;
 use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Services\PurchaseReceivingService;
 use App\Services\SupplierDeletionService;
+use App\Services\SupplierStatementService;
+use App\Support\ProductCostSchema;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -78,7 +85,26 @@ class SupplierController extends Controller
             ->paginate(15, ['*'], 'payments_page')
             ->withQueryString();
 
-        return view('suppliers.show', compact('supplier', 'purchases', 'payments'));
+        $productColumns = ['id', 'name', 'barcode'];
+        if (ProductCostSchema::available()) {
+            $productColumns[] = 'cost_price';
+        }
+        $receiptProducts = auth()->user()->can('page.suppliers.manage')
+            ? products::query()->select($productColumns)->orderBy('name')->limit(500)->get()
+            : collect();
+        $receiptBranches = auth()->user()->can('page.suppliers.manage')
+            ? Branch::query()->where('is_active', true)->orderByDesc('is_main')->orderBy('name')->get(['id', 'name', 'is_main'])
+            : collect();
+
+        return view('suppliers.show', compact('supplier', 'purchases', 'payments', 'receiptProducts', 'receiptBranches'));
+    }
+
+    public function statement(SupplierStatementRequest $request, Supplier $supplier, SupplierStatementService $statements): View
+    {
+        $filters = $request->validated();
+        $statement = $statements->statement($supplier, $filters);
+
+        return view('suppliers.statement', compact('supplier', 'statement', 'filters'));
     }
 
     public function edit(Supplier $supplier): View
@@ -165,6 +191,17 @@ class SupplierController extends Controller
         return redirect()->route('suppliers.show', $supplier)->with('success', 'تم تسجيل فاتورة الشراء.');
     }
 
+    public function storeReceipt(StorePurchaseReceiptRequest $request, Supplier $supplier, PurchaseReceivingService $receiving): RedirectResponse
+    {
+        $data = $request->validated();
+        $key = $data['idempotency_key'];
+        unset($data['idempotency_key']);
+        $purchase = $receiving->receive($supplier, $data, $request->user(), $key);
+
+        return redirect()->route('suppliers.show', $supplier)
+            ->with('success', 'تم استلام الفاتورة '.$purchase->invoice_number.' وتحديث مخزون الفرع دون تغيير تكلفة المنتج.');
+    }
+
     public function storePayment(StoreSupplierPaymentRequest $request, Supplier $supplier): RedirectResponse
     {
         $data = $request->validated();
@@ -185,6 +222,7 @@ class SupplierController extends Controller
                 $purchases = Purchase::query()
                     ->where('supplier_id', $locked->id)
                     ->where('remaining', '>', 0)
+                    ->when(isset($data['purchase_id']), fn ($query) => $query->whereKey($data['purchase_id']))
                     ->orderBy('purchase_date')
                     ->orderBy('id')
                     ->lockForUpdate()
@@ -213,6 +251,14 @@ class SupplierController extends Controller
                     $remainingToApply -= $apply;
                 }
 
+                if (isset($data['purchase_id']) && $remainingToApply > 0) {
+                    throw ValidationException::withMessages([
+                        'amount' => isset($data['purchase_id'])
+                            ? 'مبلغ السداد يتجاوز المتبقي على الفاتورة المحددة.'
+                            : 'لا توجد فواتير مستحقة كافية لتوزيع هذا المبلغ.',
+                    ]);
+                }
+
                 $locked->balance = number_format(($balanceCents - $amountCents) / 100, 2, '.', '');
                 $locked->save();
 
@@ -226,7 +272,7 @@ class SupplierController extends Controller
                 ]);
             });
         } catch (ValidationException $exception) {
-            return back()->withErrors($exception->errors())->withInput();
+            return back()->withErrors($exception->errors())->withInput()->with('open_modal', 'paymentModal');
         }
 
         return redirect()->route('suppliers.show', $supplier)->with('success', 'تم تسجيل سند الصرف وتخفيض الرصيد.');

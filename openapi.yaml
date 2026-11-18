@@ -6,6 +6,278 @@ info:
 servers:
   - url: /api/v1
 paths:
+  /installation-appointments:
+    get:
+      operationId: listInstallationAppointments
+      summary: Search installation appointments
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: search, schema: { type: string, maxLength: 100 } }
+        - { in: query, name: date, schema: { type: string, format: date } }
+        - { in: query, name: status, schema: { type: string, enum: [scheduled, confirmed, in_progress, completed, cancelled] } }
+        - { in: query, name: per_page, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        '200': { description: Paginated appointment list }
+        '403': { $ref: '#/components/responses/Forbidden' }
+      x-required-permission: page.installations.view
+    post:
+      operationId: createInstallationAppointment
+      summary: Book an installation appointment
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 16, maxLength: 64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstallationAppointmentInput' }
+      responses:
+        '201': { description: Appointment created }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+      x-required-permission: page.installations.manage
+  /installation-appointments/{appointment}:
+    parameters:
+      - { in: path, name: appointment, required: true, schema: { type: integer } }
+      - { in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 16, maxLength: 64 } }
+    put:
+      operationId: updateInstallationAppointment
+      summary: Update or reschedule an installation appointment
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstallationAppointmentInput' }
+      responses:
+        '200': { description: Appointment updated }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+      x-required-permission: page.installations.manage
+    delete:
+      operationId: deleteInstallationAppointment
+      summary: Delete an installation appointment
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Appointment deleted }
+      x-required-permission: page.installations.manage
+  /used-phones:
+    get:
+      operationId: listUsedPhones
+      summary: Search used-phone inventory
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: search, schema: { type: string, maxLength: 100 } }
+        - { in: query, name: status, schema: { type: string, enum: [in_stock, reserved, sold, returned] } }
+        - { in: query, name: condition, schema: { type: string, enum: [excellent, good, fair, poor] } }
+        - { in: query, name: per_page, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        '200': { description: Paginated used phones }
+        '403': { $ref: '#/components/responses/Forbidden' }
+      x-required-permission: page.used_phones.view
+    post:
+      operationId: createUsedPhone
+      summary: Register an acquired used phone
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 16, maxLength: 64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UsedPhoneInput' }
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/UsedPhoneInput' }
+      responses:
+        '201': { description: Used phone created }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+      x-required-permission: page.used_phones.manage
+  /used-phones/{usedPhone}:
+    parameters:
+      - { in: path, name: usedPhone, required: true, schema: { type: integer } }
+      - { in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 16, maxLength: 64 } }
+    put:
+      operationId: updateUsedPhone
+      summary: Update used-phone inspection or pricing details
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UsedPhoneInput' }
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/UsedPhoneInput' }
+      responses:
+        '200': { description: Used phone updated }
+        '404': { description: Used phone not found }
+      x-required-permission: page.used_phones.manage
+    delete:
+      operationId: deleteUsedPhone
+      summary: Remove an unsold used-phone record
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Used phone deleted }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+      x-required-permission: page.used_phones.manage
+  /devices:
+    get:
+      operationId: listTrackedDevices
+      summary: List individually tracked devices
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: query, name: q, schema: { type: string, maxLength: 100 } }
+        - { in: query, name: status, schema: { type: string, enum: [in_stock, sold, returned, repair, retired] } }
+        - { in: query, name: per_page, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200': { description: Paginated tracked devices }
+      x-required-permission: page.devices.view
+    post:
+      operationId: createTrackedDevice
+      summary: Register a device
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 16, maxLength: 64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackedDeviceInput'
+      responses:
+        '201': { description: Device registered }
+        '422': { description: Invalid input }
+      x-required-permission: page.devices.manage
+  /devices/{device}:
+    parameters:
+      - { in: path, name: device, required: true, schema: { type: integer } }
+    get:
+      operationId: showTrackedDevice
+      summary: Show one tracked device
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: Device details }
+      x-required-permission: page.devices.view
+    put:
+      operationId: updateTrackedDevice
+      summary: Update a tracked device
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 16, maxLength: 64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackedDeviceInput'
+      responses:
+        '200': { description: Device updated }
+        '422': { description: Invalid input }
+      x-required-permission: page.devices.manage
+    delete:
+      operationId: deleteTrackedDevice
+      summary: Delete an unlinked device record
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 16, maxLength: 64 } }
+      responses:
+        '204': { description: Device deleted }
+        '422': { description: Linked or sold devices cannot be deleted }
+      x-required-permission: page.devices.manage
+  /branch-stock:
+    get:
+      operationId: listBranchStock
+      summary: List branch inventory with filters
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: query, name: branch_id, schema: { type: integer } }
+        - { in: query, name: category_id, schema: { type: integer } }
+        - { in: query, name: availability, schema: { type: string, enum: [all, low, out] } }
+        - { in: query, name: q, schema: { type: string, maxLength: 100 } }
+        - { in: query, name: per_page, schema: { type: integer, minimum: 1, maximum: 100, default: 30 } }
+      responses:
+        '200':
+          description: Paginated branch stock rows
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /stock-movements:
+    get:
+      operationId: listStockMovements
+      summary: List append-only stock movements
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: query, name: branch_id, schema: { type: integer } }
+        - { in: query, name: product_id, schema: { type: integer } }
+        - { in: query, name: type, schema: { type: string, maxLength: 32 } }
+        - { in: query, name: from, schema: { type: string, format: date } }
+        - { in: query, name: to, schema: { type: string, format: date } }
+        - { in: query, name: per_page, schema: { type: integer, minimum: 1, maximum: 100, default: 30 } }
+      responses:
+        '200':
+          description: Paginated movement history
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /stock-movements/adjust:
+    post:
+      operationId: adjustBranchStock
+      summary: Record an idempotent stock adjustment
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 16, maxLength: 64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branch_id, product_id, quantity_delta, reason]
+              properties:
+                branch_id: { type: integer, minimum: 1 }
+                product_id: { type: integer, minimum: 1 }
+                quantity_delta: { type: integer, minimum: -1000000, maximum: 1000000, not: { const: 0 } }
+                reason: { type: string, minLength: 5, maxLength: 500 }
+      responses:
+        '200':
+          description: Movement created or replayed
+        '409':
+          description: Idempotency key reused for a different operation
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+  /stocktakes:
+    get:
+      operationId: listStocktakes
+      summary: List inventory counts
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: Paginated stocktakes }
+    post:
+      operationId: startStocktake
+      summary: Start a count snapshot
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string, minLength: 16, maxLength: 64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branch_id, title]
+              properties:
+                branch_id: { type: integer, minimum: 1 }
+                title: { type: string, minLength: 2, maxLength: 120 }
+                notes: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '201': { description: Count snapshot created }
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /auth/token:
     post:
       operationId: issueToken
@@ -1367,6 +1639,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /suppliers/{supplier}/statement:
+    get:
+      operationId: getSupplierStatement
+      summary: Read supplier payable history and aging buckets
+      security:
+        - bearerAuth: []
+      parameters:
+        - { in: path, name: supplier, required: true, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: from, schema: { type: string, format: date } }
+        - { in: query, name: to, schema: { type: string, format: date } }
+        - { in: query, name: status, schema: { type: string, enum: [all, open, paid] } }
+        - { in: query, name: per_page, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Supplier balance, aging totals, and independently paginated purchase/payment history
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /wallets:
     get:
       operationId: getWalletOverview
@@ -1694,6 +1987,57 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationFailed'
+  /sales-reports:
+    get:
+      operationId: salesReport
+      summary: Build an authorized aggregate sales report from sale-time invoice item snapshots
+      x-required-permission: page.sales_reports.view
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: {type: string, format: date}
+        - name: to
+          in: query
+          required: true
+          schema: {type: string, format: date}
+        - name: branch_id
+          in: query
+          schema: {type: integer, minimum: 1}
+        - name: cashier_id
+          in: query
+          schema: {type: integer, minimum: 1}
+        - name: category_id
+          in: query
+          schema: {type: integer, minimum: 1}
+        - name: product_id
+          in: query
+          schema: {type: integer, minimum: 1}
+        - name: payment_status
+          in: query
+          schema: {type: string, enum: [paid, partial, unpaid]}
+        - name: group_by
+          in: query
+          schema: {type: string, enum: [day, week, month], default: day}
+      responses:
+        '200':
+          description: Filtered aggregates and breakdowns; legacy cost estimates and missing cost are explicitly reported
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    description: Contains summary, trend, products, categories, cashiers, and payment_statuses
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
   /sales:
     get:
       operationId: listSoldProducts
@@ -2010,6 +2354,50 @@ components:
         maximum: 100
         default: 20
   schemas:
+    InstallationAppointmentInput:
+      type: object
+      required: [customer_name, phone, device_model, service_type, scheduled_at, duration_minutes, status]
+      properties:
+        customer_name: { type: string, maxLength: 160 }
+        phone: { type: string, maxLength: 32 }
+        device_model: { type: string, maxLength: 160 }
+        service_type: { type: string, maxLength: 120 }
+        service_details: { type: [string, 'null'], maxLength: 4000 }
+        scheduled_at: { type: string, format: date-time }
+        duration_minutes: { type: integer, minimum: 15, maximum: 480 }
+        technician_id: { type: [integer, 'null'] }
+        status: { type: string, enum: [scheduled, confirmed, in_progress, completed, cancelled] }
+        address: { type: [string, 'null'], maxLength: 255 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    UsedPhoneInput:
+      type: object
+      required: [brand, model, condition, purchase_price, asking_price, purchase_date, seller_name, status]
+      properties:
+        brand: { type: string, maxLength: 100 }
+        model: { type: string, maxLength: 160 }
+        imei: { type: [string, 'null'], maxLength: 32 }
+        serial_number: { type: [string, 'null'], maxLength: 100 }
+        condition: { type: string, enum: [excellent, good, fair, poor] }
+        purchase_price: { type: string, pattern: '^\\d+(\\.\\d{1,2})?$' }
+        asking_price: { type: string, pattern: '^\\d+(\\.\\d{1,2})?$' }
+        purchase_date: { type: string, format: date }
+        seller_name: { type: string, maxLength: 160 }
+        seller_phone: { type: [string, 'null'], maxLength: 32 }
+        status: { type: string, enum: [in_stock, reserved, sold, returned] }
+        image: { type: string, format: binary }
+        remove_image: { type: boolean }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    TrackedDeviceInput:
+      type: object
+      required: [product_id, status]
+      properties:
+        product_id: { type: integer }
+        imei: { type: [string, 'null'], maxLength: 32 }
+        serial_number: { type: [string, 'null'], maxLength: 100 }
+        status: { type: string, enum: [in_stock, sold, returned, repair, retired] }
+        customer_name: { type: [string, 'null'], maxLength: 255 }
+        invoice_id: { type: [integer, 'null'] }
+        notes: { type: [string, 'null'], maxLength: 2000 }
     User:
       type: object
       required: [id, name, username, roles, permissions]

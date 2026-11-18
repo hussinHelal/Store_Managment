@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Sales reports: added sale-time invoice item cost snapshots with estimated legacy backfill, branch/cashier attribution, Arabic web/API/Android report filters and breakdowns, SQL aggregates, CSV streaming with injection protection, and Arabic PDF output. Discounts and tender type remain explicitly unreported because no source records them.
+- Purchasing: added manual product cost, purchase item snapshots, branch-aware receiving, safe supplier payable/payment updates, idempotent web/API/Android receipt entry, and discrepancy warnings without changing product cost.
+- Supplier balances: added an Arabic account statement and permission-gated API with date/status filters, separate purchase/payment pagination, Cairo aging buckets, reconciliation difference warning, and Android supplier detail aging/recent-history summaries.
+- Android inventory: fixed branch stock loading for view-only users and corrected the movement permission binding.
+
+- Inventory foundation: branch and user assignment tables, append-only branch movements, transfer workflow, stocktakes with count-time movement snapshots, locked stock service, branch-aware cashier/damage availability, Arabic web screens, v1 API endpoints, and an Arabic Android branch-stock list/manual adjustment screen. Stock verification is read-only. Android build remains unverified.
+- Backup safety: catalog import now rejects product quantity changes that do not include branch-ledger history, and initializes zero branch rows for newly imported zero-stock products.
+
 - Android: separate "new payment" and "change status" buttons for installments; personal debts ("ديوني") tab inside the installments page with add, edit, pay, details and delete; change-device-status dialog for maintenance; labeled edit/delete buttons for products; edit, change-status (pay in full / refund) and payment buttons for invoices; full damaged-stock page (list, filters, details, add, edit, delete); editable profile including password change; dark-theme toggle removed; all dialog forms scrollable; refreshed card styling.
 - Android: live connection indicator (top-bar pill + banner) that checks both the phone's network and the server's `/up` health route, auto-refreshes data when the connection returns; dashboard with quick actions, key figures and alerts; pull-to-refresh; search clear button; back goes to the dashboard first.
 - Android fixes: lists no longer blank out while refreshing; confirm buttons are disabled during saves (no double submits); Arabic server validation messages are now shown; lenient JSON decoding for older records.

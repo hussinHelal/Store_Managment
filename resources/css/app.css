@@ -54,6 +54,22 @@ header .dropdown {
     z-index: 1300;
 }
 
+/* The application header has its own stacking layer; keep dialogs and their
+   backdrop above it so supplier forms remain centered and fully accessible. */
+.modal-backdrop {
+    z-index: 1450;
+}
+
+.modal {
+    z-index: 1455;
+}
+
+@media (min-width: 768px) {
+    .receipt-item .receipt-remove {
+        margin-top: 1.9rem;
+    }
+}
+
 .sidebar {
     width: 250px;
     min-height: calc(100vh - 56px);
@@ -62,6 +78,47 @@ header .dropdown {
 
 .app-shell > main {
     min-width: 0;
+}
+
+.sidebar-group {
+    margin-block: 0.2rem;
+}
+
+.sidebar-group-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+}
+
+.sidebar-group-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.sidebar-group-toggle:hover,
+.sidebar-group-toggle:focus-visible {
+    background-color: rgba(13, 110, 253, 0.08);
+    color: #0d6efd;
+    outline: none;
+}
+
+.sidebar-group-chevron {
+    transition: transform 0.2s ease;
+}
+
+.sidebar-group[open] .sidebar-group-chevron {
+    transform: rotate(180deg);
+}
+
+.sidebar-group-links {
+    padding-inline-start: 0.35rem;
 }
 
 .sidebar .nav-link {
@@ -316,7 +373,48 @@ header .dropdown {
         padding: 0.85rem !important;
     }
 
-    .sidebar .nav-link {
+    .sidebar-group {
+    margin-block: 0.2rem;
+}
+
+.sidebar-group-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+}
+
+.sidebar-group-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.sidebar-group-toggle:hover,
+.sidebar-group-toggle:focus-visible {
+    background-color: rgba(13, 110, 253, 0.08);
+    color: #0d6efd;
+    outline: none;
+}
+
+.sidebar-group-chevron {
+    transition: transform 0.2s ease;
+}
+
+.sidebar-group[open] .sidebar-group-chevron {
+    transform: rotate(180deg);
+}
+
+.sidebar-group-links {
+    padding-inline-start: 0.35rem;
+}
+
+.sidebar .nav-link {
         padding: 0.65rem 0.75rem;
         font-size: 0.94rem;
     }

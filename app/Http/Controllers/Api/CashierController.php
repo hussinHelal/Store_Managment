@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\CashierCheckoutRequest;
 use App\Http\Controllers\CashierController as WebCashierController;
+use App\Http\Requests\Api\CashierCheckoutRequest;
 use App\Models\invoice;
 use App\Models\products;
 use App\Services\ApiIdempotencyService;
+use App\Services\CurrentBranch;
 use App\Services\InvoiceCreationService;
 use App\Services\InvoiceInstallmentSync;
+use App\Support\Money;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -17,7 +19,7 @@ class CashierController
 {
     public function products(Request $request, WebCashierController $cashier): JsonResponse
     {
-        return $cashier->search($request);
+        return $cashier->search($request, app(CurrentBranch::class));
     }
 
     public function checkout(
@@ -49,11 +51,11 @@ class CashierController
 
                 $totalCents = 0;
                 foreach ($lines as $productId => $quantity) {
-                    $totalCents += (int) round((float) $prices[$productId] * 100) * $quantity;
+                    $totalCents += Money::cents($prices[$productId]) * $quantity;
                 }
 
                 $receivedCents = isset($data['received'])
-                    ? (int) round((float) $data['received'] * 100)
+                    ? Money::cents($data['received'])
                     : $totalCents;
                 $paidCents = min($receivedCents, $totalCents);
                 $customer = trim((string) preg_replace('/\s+/u', ' ', (string) ($data['customer'] ?? '')));
@@ -67,25 +69,24 @@ class CashierController
                         'product_ids' => array_keys($lines),
                         'quantities' => array_values($lines),
                         'invoice_date' => now()->toDateString(),
-                        'paid_amount' => number_format($paidCents / 100, 2, '.', ''),
+                        'paid_amount' => Money::decimal($paidCents),
                     ],
                     (int) $request->user()->id,
-                    fn (invoice $invoice, array $items, float $total, float $paid) =>
-                        $installments->sync($invoice, $items, $total, $paid)
+                    fn (invoice $invoice, array $items, string $total, string $paid) => $installments->sync($invoice, $items, $total, $paid)
                 );
 
-                $invoiceTotalCents = (int) round((float) $invoice->total_amount * 100);
-                $invoicePaidCents = (int) round((float) $invoice->paid_amount * 100);
+                $invoiceTotalCents = Money::cents($invoice->total_amount);
+                $invoicePaidCents = Money::cents($invoice->paid_amount);
 
                 return [
                     'status' => 201,
                     'body' => ['data' => [
                         'invoice_id' => $invoice->id,
                         'invoice_number' => $invoice->invoice_number,
-                        'total' => number_format($invoiceTotalCents / 100, 2, '.', ''),
-                        'paid' => number_format($invoicePaidCents / 100, 2, '.', ''),
-                        'remaining' => number_format(max(0, $invoiceTotalCents - $invoicePaidCents) / 100, 2, '.', ''),
-                        'change' => number_format(max(0, $receivedCents - $invoicePaidCents) / 100, 2, '.', ''),
+                        'total' => Money::decimal($invoiceTotalCents),
+                        'paid' => Money::decimal($invoicePaidCents),
+                        'remaining' => Money::decimal(max(0, $invoiceTotalCents - $invoicePaidCents)),
+                        'change' => Money::decimal(max(0, $receivedCents - $invoicePaidCents)),
                     ]],
                 ];
             }

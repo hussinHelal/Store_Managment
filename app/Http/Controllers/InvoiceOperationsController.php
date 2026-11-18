@@ -8,10 +8,10 @@ use App\Models\invoice;
 use App\Models\products;
 use App\Services\InvoiceCreationService;
 use App\Services\InvoiceInstallmentSync;
-use Illuminate\Http\Request;
+use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class InvoiceOperationsController extends Controller
@@ -84,8 +84,7 @@ class InvoiceOperationsController extends Controller
         $invoice = app(InvoiceCreationService::class)->create(
             $validated,
             $request->user()->id,
-            fn (invoice $invoice, array $items, float $total, float $paid) =>
-                $this->syncInvoiceInstallment($invoice, $items, $total, $paid)
+            fn (invoice $invoice, array $items, string $total, string $paid) => $this->syncInvoiceInstallment($invoice, $items, $total, $paid)
         );
 
         return redirect()->route('invoices.index')->with('success', 'تم إنشاء الفاتورة بنجاح.');
@@ -128,19 +127,18 @@ class InvoiceOperationsController extends Controller
             $invoice,
             $validated,
             $request->user()->id,
-            fn (invoice $updated, array $items, float $total, float $paid) =>
-                $this->syncInvoiceInstallment($updated, $items, $total, $paid)
+            fn (invoice $updated, array $items, string $total, string $paid) => $this->syncInvoiceInstallment($updated, $items, $total, $paid)
         );
 
         return redirect()->route('invoices.index')->with('success', 'تم تحديث الفاتورة بنجاح.');
     }
 
-    public function destroy(invoice $invoice)
+    public function destroy(invoice $invoice, StockService $stock)
     {
         $userId = request()->user()->id;
 
         try {
-            DB::transaction(function () use ($invoice, $userId): void {
+            DB::transaction(function () use ($invoice, $userId, $stock): void {
                 $lockedInvoice = invoice::query()->lockForUpdate()->findOrFail($invoice->id);
 
                 if (installments::query()->where('invoice_id', $lockedInvoice->id)->exists()) {
@@ -155,7 +153,10 @@ class InvoiceOperationsController extends Controller
                     foreach ($quantities as $productId => $quantity) {
                         $product = $products->get($productId);
                         if ($product) {
-                            $product->stock += $quantity;
+                            $stock->increase(
+                                (int) $productId, (int) $quantity, 'invoice_void', request()->user(),
+                                'إلغاء الفاتورة '.$lockedInvoice->invoice_number, $lockedInvoice,
+                            );
                             $product->total_sold = max(0, $product->total_sold - $quantity);
                             $product->save();
                         }
@@ -177,12 +178,12 @@ class InvoiceOperationsController extends Controller
         return redirect()->route('invoices.index')->with('success', 'تم حذف الفاتورة بنجاح.');
     }
 
-    public function refund(invoice $invoice)
+    public function refund(invoice $invoice, StockService $stock)
     {
         $userId = request()->user()->id;
 
         try {
-            DB::transaction(function () use ($invoice, $userId): void {
+            DB::transaction(function () use ($invoice, $userId, $stock): void {
                 $lockedInvoice = invoice::query()->lockForUpdate()->findOrFail($invoice->id);
                 if ($lockedInvoice->status === 'refunded') {
                     throw ValidationException::withMessages(['invoice' => 'تم استرداد هذه الفاتورة من قبل.']);
@@ -195,7 +196,10 @@ class InvoiceOperationsController extends Controller
                 foreach ($quantities as $productId => $quantity) {
                     $product = $products->get($productId);
                     if ($product) {
-                        $product->stock += $quantity;
+                        $stock->increase(
+                            (int) $productId, (int) $quantity, 'refund', request()->user(),
+                            'استرداد الفاتورة '.$lockedInvoice->invoice_number, $lockedInvoice,
+                        );
                         $product->total_sold = max(0, $product->total_sold - $quantity);
                         $product->save();
                     }
@@ -233,7 +237,7 @@ class InvoiceOperationsController extends Controller
         if ($request->filled('barcode')) {
             $request->validate(['barcode' => ['string', 'max:80']]);
             $product = products::where('barcode', trim($request->input('barcode')))->first();
-            if (!$product) {
+            if (! $product) {
                 throw ValidationException::withMessages(['barcode' => 'لا يوجد منتج مطابق لهذا الباركود.']);
             }
 
@@ -279,7 +283,7 @@ class InvoiceOperationsController extends Controller
         return $quantities;
     }
 
-    private function syncInvoiceInstallment(invoice $invoice, array $items, float $totalAmount, float $paidAmount): void
+    private function syncInvoiceInstallment(invoice $invoice, array $items, string $totalAmount, string $paidAmount): void
     {
         app(InvoiceInstallmentSync::class)->sync($invoice, $items, $totalAmount, $paidAmount);
     }

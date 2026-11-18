@@ -22,6 +22,7 @@ class CreateProductRequest extends ApiFormRequest
             'idempotency_key' => ['required', 'string', 'min:16', 'max:64', 'regex:/^[A-Za-z0-9-]+$/'],
             'name' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:999999.99'],
+            'cost_price' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999.99'],
             'description' => ['nullable', 'string', 'max:2000'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'barcode' => ['nullable', 'string', 'max:255'],

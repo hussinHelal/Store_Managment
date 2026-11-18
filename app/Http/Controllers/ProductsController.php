@@ -2,14 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Http\Requests\SaveProductRequest;
+use App\Models\Branch;
+use App\Models\category;
 use App\Models\installments;
 use App\Models\invoice;
 use App\Models\products;
-use App\Models\category;
+use App\Models\StockMovement;
+use App\Models\TrackedDevice;
+use App\Services\CurrentBranch;
 use App\Services\PictureStorageService;
+use App\Services\StockService;
+use App\Support\ProductCostSchema;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ProductsController extends Controller
 {
@@ -27,7 +34,7 @@ class ProductsController extends Controller
                 $search = '%'.addcslashes($term, '%_\\').'%';
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', $search)
-                          ->orWhere('barcode', 'like', $search);
+                        ->orWhere('barcode', 'like', $search);
                 });
             })
             ->orderBy('id', 'desc')
@@ -35,7 +42,10 @@ class ProductsController extends Controller
             ->withQueryString();
 
         $categories = category::all();
-        return view('products.index', compact('products', 'categories'));
+
+        $supportsCostPrice = ProductCostSchema::available();
+
+        return view('products.index', compact('products', 'categories', 'supportsCostPrice'));
     }
 
     public function printLabel(products $product)
@@ -49,23 +59,40 @@ class ProductsController extends Controller
     public function create()
     {
         $categories = category::all();
-        return view('products.create', ['categories' => $categories]);
+        $supportsCostPrice = ProductCostSchema::available();
+
+        return view('products.create', compact('categories', 'supportsCostPrice'));
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(SaveProductRequest $request, PictureStorageService $pictures)
+    public function store(SaveProductRequest $request, PictureStorageService $pictures, StockService $stock, CurrentBranch $currentBranch)
     {
         $validated = $request->validated();
+        ProductCostSchema::prepare($validated, $request);
         $newImage = $request->hasFile('image') ? $pictures->store($request->file('image'), 'products') : null;
         unset($validated['remove_image']);
         if ($newImage !== null) {
             $validated['image'] = $newImage;
         }
 
+        $openingQuantity = (int) $validated['stock'];
+        $validated['stock'] = 0;
+
         try {
-            DB::transaction(fn () => products::create($validated));
+            DB::transaction(function () use ($validated, $openingQuantity, $request, $stock): void {
+                $product = products::query()->create($validated);
+                foreach (Branch::query()->where('is_active', true)->pluck('id') as $branchId) {
+                    $stock->initializeBranch((int) $product->id, (int) $branchId);
+                }
+                if ($openingQuantity > 0) {
+                    $stock->increase(
+                        (int) $product->id, $openingQuantity, 'opening', $request->user(),
+                        'رصيد افتتاحي عند إنشاء المنتج', $product,
+                    );
+                }
+            }, 3);
         } catch (\Throwable $exception) {
             $pictures->delete($newImage, 'products');
             throw $exception;
@@ -90,15 +117,21 @@ class ProductsController extends Controller
     public function edit(products $product)
     {
         $categories = category::all();
-        return view('products.edit', ['product' => $product, 'categories' => $categories,'id' => $product->id]);
+        $supportsCostPrice = ProductCostSchema::available();
+
+        return view('products.edit', compact('product', 'categories', 'supportsCostPrice') + ['id' => $product->id]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(SaveProductRequest $request, products $product, PictureStorageService $pictures)
+    public function update(SaveProductRequest $request, products $product, PictureStorageService $pictures, StockService $stock)
     {
         $validated = $request->validated();
+        ProductCostSchema::prepare($validated, $request);
+        $targetStock = (int) $validated['stock'];
+        $stockReason = trim((string) ($validated['stock_adjustment_reason'] ?? ''));
+        unset($validated['stock'], $validated['stock_adjustment_reason']);
         $oldImage = $product->image;
         $removeImage = (bool) ($validated['remove_image'] ?? false);
         $newImage = $request->hasFile('image') ? $pictures->store($request->file('image'), 'products') : null;
@@ -110,7 +143,22 @@ class ProductsController extends Controller
         }
 
         try {
-            DB::transaction(fn () => $product->update($validated));
+            DB::transaction(function () use ($product, $validated, $targetStock, $stockReason, $stock, $request): void {
+                $locked = products::query()->lockForUpdate()->findOrFail($product->id);
+                $delta = $targetStock - (int) $locked->stock;
+                if ($delta !== 0 && mb_strlen($stockReason) < 5) {
+                    throw ValidationException::withMessages([
+                        'stock_adjustment_reason' => 'اكتب سبباً واضحاً عند تغيير كمية المخزون.',
+                    ]);
+                }
+                $locked->update($validated);
+                if ($delta !== 0) {
+                    $stock->setAggregate(
+                        (int) $locked->id, $targetStock, $request->user(), $stockReason,
+                        $locked,
+                    );
+                }
+            }, 3);
         } catch (\Throwable $exception) {
             $pictures->delete($newImage, 'products');
             throw $exception;
@@ -119,6 +167,7 @@ class ProductsController extends Controller
         if ($newImage !== null || $removeImage) {
             $pictures->delete($oldImage, 'products');
         }
+
         return redirect()->route('products.index')->with('success', 'تم تحديث المنتج.');
     }
 
@@ -128,7 +177,7 @@ class ProductsController extends Controller
     public function destroy(Request $request, products $product, PictureStorageService $pictures)
     {
         if ($request->user()->cannot('delete-products', $product)) {
-            return redirect()->route('products.index')->with('error','هذا المستخدم ليس لديه صلاحيه لهذا الامر');
+            return redirect()->route('products.index')->with('error', 'لا تملك صلاحية حذف هذا المنتج.');
         }
 
         if ($this->hasTransactionHistory($product)) {
@@ -139,6 +188,7 @@ class ProductsController extends Controller
         $image = $product->image;
         $product->delete();
         $pictures->delete($image, 'products');
+
         return redirect()->route('products.index')->with('success', 'تم حذف المنتج.');
     }
 
@@ -155,6 +205,8 @@ class ProductsController extends Controller
             || $product->installments()->exists()
             || $product->sales()->exists()
             || invoice::query()->where('items', 'like', $line)->exists()
-            || installments::query()->where('items', 'like', $line)->exists();
+            || installments::query()->where('items', 'like', $line)->exists()
+            || TrackedDevice::query()->where('product_id', $product->id)->exists()
+            || StockMovement::query()->where('product_id', $product->id)->exists();
     }
 }
